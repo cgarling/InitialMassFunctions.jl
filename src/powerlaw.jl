@@ -1,71 +1,26 @@
-# this nonsense of trying to use the Distributions objects seems ill-fated.
-# Switch back to manual implementations
-struct PowerLawIMF{T<:Real} <: AbstractIMF
-    α::T
-    mmin::T
-    mmax::T
-    ξ0::T
-    PowerLawIMF{T}(α::T, mmin::T, mmax::T, ξ0::T) where {T} = new{T}(α, mmin, mmax, ξ0)
-end
-function PowerLawIMF(α::T,mmin::T,mmax::T,ξ0::T) where {T<:Real}
-    @assert mmin<mmax
-    @assert mmin>0
-    @assert α>0
-    @assert ξ0>0
-    PowerLawIMF{T}(α,mmin,mmax,ξ0)
-end
-PowerLawIMF(α::Real,mmin::Real,mmax::Real,ξ0::Real) = PowerLawIMF(promote(α,mmin,mmax,ξ0)...)
-function PowerLawIMF(α::Real,mmin::Real,mmax::Real)
-    α1 = α + 1
-    ξ0 = α * mmax^α1 * mmin^α1 / (mmax^α1 * mmin - mmax * mmin^α1)
-    return PowerLawIMF(α,mmin,mmax,ξ0)
-end
-normalization(x::PowerLawIMF) = x.ξ0
-slope(x::PowerLawIMF) = x.α + 1
-logslope(x::PowerLawIMF) = x.α
-function dndm(law::PowerLawIMF,m::Real)
-    m <= zero(m) && return zero(m)
-    α = slope(law) # linear slope for dn/dm, not dn/dlogm
-    return  normalization(law) / m^α
-end
-dndlogm(law::PowerLawIMF,m::T) where {T<:Real} = dndm(law,m) * m * T(log(10))
-# m > zero(m) ? (return normalization(law) / m^(slope(law)-1) * T(log(10))) : (return zero(m))
+PowerLawIMF(α::Real,mmin::Real,mmax::Real) = truncated(Pareto(α-1,mmin);upper=mmax)
+Salpeter1955(mmin::Real=0.4,mmax::Real=10.0) = PowerLawIMF(2.35,mmin,mmax)
 
-function pdf(law::PowerLawIMF,m::Real)
-    m <= zero(m) && return zero(m)
-    mmin,mmax=limits(law) # need to recalculate the normalization
-    α = slope(law) # linear slope for dn/dm, not dn/dlogm
-    ξ0 = (α-1) * mmax^α * mmin^α / (mmax^α * mmin - mmax * mmin^α)
-    return ξ0 / m^α
-    # α = logslope(law) # linear slope for dn/dm, not dn/dlogm
-    # ξ0 = α * mmax^α * mmin^α / (mmax^α - mmin^α)
-    # return ξ0 / m^(α+1)
+struct Chabrier2003{T<:Real} <: AbstractIMF
+    A1::T # lognormal parameter
+    mc::T # lognormal parameter
+    σ::T  # lognormal parameter
+    A2::T # power law parameter for large M
+    x::T  # power law parameter for large M
 end
-function logpdf(law::PowerLawIMF,m::Real)
-    @assert m>=zero(m)
-    α = slope(law) # linear slope for dn/dm, not dn/dlogm
-    mmin,mmax=limits(law) # need to recalculate the normalization
-    ξ0 = (α-1) * mmax^α * mmin^α / (mmax^α * mmin - mmax * mmin^α)
-    log(ξ0) - α * log(m)
+Chabrier2003(A1::Real=0.158,mc::Real=0.079,σ::Real=0.69,A2::Real=0.0443,x::Real=1.35) = Chabrier2003(promote(A1,mc,σ,A2,x)...)
+# these are not pdfs; they are not normalized to integrate to one. They are normalized to equal the hipparcos value at 0.8 solar masses
+function logpdf(d::Chabrier2003,m::Real)
+    if m <= one(m)
+        log(d.A1) - log(m) - log(log(10)) - 0.5*(log10(m)-log10(d.mc))^2/d.σ^2
+    else
+        log(d.A2) - log(m) - log(log(10)) -d.x * log(m)
+    end
 end
-function cdf(law::PowerLawIMF,m::Real)
-    m <= zero(m) && return zero(m)
-    α = slope(law) # linear slope for dn/dm, not dn/dlogm
-    mmin,mmax=limits(law) # need to recalculate the normalization
-    ξ0 = (α-1) * mmax^α * mmin^α / (mmax^α * mmin - mmax * mmin^α)
-    α2 = 1-α
-    return (ξ0 * m^α2 - ξ0 * mmin^α2) / α2
+function pdf(d::Chabrier2003,m::Real)
+    if m <= one(m)
+        d.A1 / m / log(10) * exp(-0.5*(log10(m)-log10(d.mc))^2/d.σ^2)
+    else
+        d.A2 / m / log(10) * m^-d.x
+    end
 end
-function median(law::PowerLawIMF)
-    α = slope(law) # linear slope for dn/dm, not dn/dlogm
-    mmin,mmax=limits(law) # need to recalculate the normalization
-    ξ0 = (α-1) * mmax^α * mmin^α / (mmax^α * mmin - mmax * mmin^α)
-    return ((0.5/ξ0) * (1 - α) + mmin^(1-α))^(1/(1-α))
-end
-function mode(law::PowerLawIMF)
-    mmin,mmax = limits(law)
-    mmin
-end
-
-# Particular types of PowerLawIMFs
-Salpeter1955(mmin::Real=0.4,mmax::Real=10.0) = PowerLawIMF(1.35,mmin,mmax,0.03)
