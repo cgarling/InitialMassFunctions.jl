@@ -18,10 +18,9 @@ PowerLawIMF(α::Real,mmin::Real,mmax::Real,ξ0::Real) = PowerLawIMF(promote(α,m
 function PowerLawIMF(α::Real,mmin::Real,mmax::Real)
     α1 = α + 1
     ξ0 = α * mmax^α1 * mmin^α1 / (mmax^α1 * mmin - mmax * mmin^α1)
-    return PowerLawIMF(promote(α,mmin,mmax,ξ0)...)
+    return PowerLawIMF(α,mmin,mmax,ξ0)
 end
 normalization(x::PowerLawIMF) = x.ξ0
-prefactor(x::PowerLawIMF) = x.A
 slope(x::PowerLawIMF) = x.α + 1
 logslope(x::PowerLawIMF) = x.α
 function dndm(law::PowerLawIMF,m::Real)
@@ -34,10 +33,13 @@ dndlogm(law::PowerLawIMF,m::T) where {T<:Real} = dndm(law,m) * m * T(log(10))
 
 function pdf(law::PowerLawIMF,m::Real)
     m <= zero(m) && return zero(m)
-    α = slope(law) # linear slope for dn/dm, not dn/dlogm
     mmin,mmax=limits(law) # need to recalculate the normalization
+    α = slope(law) # linear slope for dn/dm, not dn/dlogm
     ξ0 = (α-1) * mmax^α * mmin^α / (mmax^α * mmin - mmax * mmin^α)
     return ξ0 / m^α
+    # α = logslope(law) # linear slope for dn/dm, not dn/dlogm
+    # ξ0 = α * mmax^α * mmin^α / (mmax^α - mmin^α)
+    # return ξ0 / m^(α+1)
 end
 function logpdf(law::PowerLawIMF,m::Real)
     @assert m>=zero(m)
