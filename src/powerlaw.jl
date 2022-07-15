@@ -1,5 +1,6 @@
 PowerLawIMF(α::Real,mmin::Real,mmax::Real) = truncated(Pareto(α-1,mmin);upper=mmax)
 Salpeter1955(mmin::Real=0.4,mmax::Real=10.0) = PowerLawIMF(2.35,mmin,mmax)
+Chabrier2001Lognormal(mmin::Real=0.08,mmax::Real=120.0) = truncated(LogNormal(-log(10),0.627*log(10)),mmin,mmax)
 
 struct Chabrier2003{T<:Real} <: AbstractIMF
     A1::T # lognormal parameter
