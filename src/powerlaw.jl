@@ -25,3 +25,43 @@ function pdf(d::Chabrier2003,m::Real)
         d.A2 / m / log(10) * m^-d.x
     end
 end
+
+
+struct BrokenPowerLaw{T,S} <: AbstractIMF
+    A::T      # normalization parameters
+    α::T      # power law indexes
+    breakpoints::S # bounds of each break
+    BrokenPowerLaw{T,S}(A::T,α::T,breakpoints::S) where {T,S} = new{T,S}(A,α,breakpoints)
+end
+function BrokenPowerLaw(α::T,breakpoints::S) where {T,S}
+    integral(A,α,b1,b2) = A/(1-α) * (b2^(1-α) - b1^(1-α)) #definite integral of A*x^-α from b1 (lower) to b2 (upper)
+    @assert length(breakpoints) == length(α)+1
+    @assert breakpoints[1]>0
+    nbreaks = length(α)
+    U = eltype(α)
+    A=Array{U}(undef,nbreaks)
+    A[1]=1
+    @inbounds for i in 2:nbreaks
+        A[i] = A[i-1]*breakpoints[i]^-α[i-1] / breakpoints[i]^-α[i]
+    end
+    # now A contains prefactors for each power law that makes them continuous
+    # with the first power law having a prefactor of 1. Now we need to normalize
+    # the integral from minimum(breaks) to maximum(breaks) to equal 1 by dividing
+    # the entire A array by a common factor.
+    total_integral = zero(U)
+    for i in 1:nbreaks
+        total_integral += integral(A[i],α[i],breakpoints[i],breakpoints[i+1])
+    end
+    A ./= total_integral
+    return BrokenPowerLaw{T,S}(A,α,breakpoints)
+end
+minimum(d::BrokenPowerLaw) = minimum(d.breakpoints)
+maximum(d::BrokenPowerLaw) = maximum(d.breakpoints)
+partype(d::BrokenPowerLaw{T}) where T = T
+Base.eltype(d::BrokenPowerLaw{T}) where T = eltype(T)
+function pdf(d::BrokenPowerLaw,x::Real)
+    ((x < minimum(d)) || (x > maximum(d))) && (return zero(eltype(d)))
+    idx = findfirst(>=(x),d.breakpoints)
+    idx != 1 && (idx-=1)
+    d.A[idx] * x^-d.α[idx]
+end
