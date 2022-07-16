@@ -26,6 +26,8 @@ function pdf(d::Chabrier2003,m::Real)
     end
 end
 
+###########################################################################################
+pl_integral(A,α,b1,b2) = A/(1-α) * (b2^(1-α) - b1^(1-α)) #definite integral of power law A*x^-α from b1 (lower) to b2 (upper)
 
 struct BrokenPowerLaw{T,S} <: AbstractIMF
     A::T      # normalization parameters
@@ -34,7 +36,6 @@ struct BrokenPowerLaw{T,S} <: AbstractIMF
     BrokenPowerLaw{T,S}(A::T,α::T,breakpoints::S) where {T,S} = new{T,S}(A,α,breakpoints)
 end
 function BrokenPowerLaw(α::T,breakpoints::S) where {T,S}
-    integral(A,α,b1,b2) = A/(1-α) * (b2^(1-α) - b1^(1-α)) #definite integral of A*x^-α from b1 (lower) to b2 (upper)
     @assert length(breakpoints) == length(α)+1
     @assert breakpoints[1]>0
     nbreaks = length(α)
@@ -50,11 +51,12 @@ function BrokenPowerLaw(α::T,breakpoints::S) where {T,S}
     # the entire A array by a common factor.
     total_integral = zero(U)
     for i in 1:nbreaks
-        total_integral += integral(A[i],α[i],breakpoints[i],breakpoints[i+1])
+        total_integral += pl_integral(A[i],α[i],breakpoints[i],breakpoints[i+1])
     end
     A ./= total_integral
     return BrokenPowerLaw{T,S}(A,α,breakpoints)
 end
+params(d::BrokenPowerLaw) = d.A,d.α,d.breakpoints
 minimum(d::BrokenPowerLaw) = minimum(d.breakpoints)
 maximum(d::BrokenPowerLaw) = maximum(d.breakpoints)
 partype(d::BrokenPowerLaw{T}) where T = T
@@ -65,3 +67,89 @@ function pdf(d::BrokenPowerLaw,x::Real)
     idx != 1 && (idx-=1)
     d.A[idx] * x^-d.α[idx]
 end
+function logpdf(d::BrokenPowerLaw,x::Real)
+    T = eltype(d)
+    if ((x >= minimum(d)) && (x <= maximum(d)))
+        A,α,breakpoints = params(d)
+        idx = findfirst(>=(x),breakpoints)
+        idx != 1 && (idx-=1)
+        log(A[idx]) - α[idx]*log(x)
+    else
+        return -T(Inf)
+    end
+end
+function cdf(d::BrokenPowerLaw,x::Real)
+    if x <= minimum(d)
+        return zero(eltype(d))
+    elseif x >= maximum(d)
+        return one(eltype(d))
+    end
+    A,α,breakpoints = params(d)
+    idx = findfirst(>=(x),d.breakpoints)
+    idx != 1 && (idx-=1)
+    result = sum(pl_integral(A[i],α[i],breakpoints[i],min(x,breakpoints[i+1])) for i in 1:idx)
+end
+ccdf(d::BrokenPowerLaw,x::Real) = 1 - cdf(d,x)
+function quantile(d::BrokenPowerLaw,x::Real)
+    x<=zero(x) && (return minimum(d))
+    x>=one(x) && (return maximum(d))
+    A,α,breakpoints = params(d)
+    nbreaks = length(A)
+    integrals = cumsum(pl_integral(A[i],α[i],breakpoints[i],breakpoints[i+1]) for i in 1:nbreaks) # calculate the cumulative integral 
+    idx = findfirst(>=(x),integrals)  # find the first breakpoint where the cumulative integral   # up to each breakpoint 
+    idx != 1 && (x-=integrals[idx-1]) # is greater than x. If this is not the first breakpoint, then subtract off the cumulative integral
+    # if idx == 1                     # up to the last breakpoitn
+    #     a = 1 - α[idx]
+    #     return (x*a/A[idx] + breakpoints[idx]^a)^(1/a)
+    # else
+    #     return
+    # end
+    a = 1 - α[idx]
+    return (x*a/A[idx] + breakpoints[idx]^a)^(1/a)
+end
+function quantile!(result::AbstractArray,d::BrokenPowerLaw,x::AbstractArray{T}) where {T<:Real}
+    @assert size(result) == size(x)
+    A,α,breakpoints = params(d)
+    nbreaks = length(A)
+    integrals = cumsum(pl_integral(A[i],α[i],breakpoints[i],breakpoints[i+1]) for i in 1:nbreaks) # calculate the cumulative integral
+    @inbounds for i in eachindex(x)
+        xi = x[i]
+        xi<=zero(T) && (result[i]=minimum(d); continue)
+        xi>=one(T) && (result[i]=maximum(d); continue)
+        idx = findfirst(>=(xi),integrals)  # find the first breakpoint where the cumulative integral   # up to each breakpoint 
+        idx != 1 && (xi-=integrals[idx-1]) # is greater than x. If this is not the first breakpoint, then subtract off 
+        a = 1 - α[idx]                     # the cumulative integral
+        result[i] = (xi*a/A[idx] + breakpoints[idx]^a)^(1/a)
+    end
+    return result
+end
+quantile(d::BrokenPowerLaw,x::AbstractArray) = quantile!(Array{promote_type(eltype(d),eltype(x))}(undef,size(x)),d,x)
+
+##### Random sampling
+
+# Implementing efficient sampler. We need the cumulative integral up to each breakpoint in
+# order to transform a uniform random point in (0,1] to a random mass, but we dont want to
+# recompute it every time. We could just use the method of quantile(d::BrokenPowerLaw,x::AbstractArray)
+# for this purpose but the "correct" way to do it is to implement a `sampler` method as below. 
+# rand(rng::AbstractRNG,d::BrokenPowerLaw) = quantile(rand())
+struct BPLSampler{T,S} <: Sampleable{Univariate,Continuous}
+    A::T      # normalization parameters
+    α::T      # power law indexes
+    breakpoints::S # bounds of each break
+    integrals::T   # cumulative integral up to each breakpoint
+end
+function BPLSampler(d::BrokenPowerLaw)
+    A,α,breakpoints = params(d)
+    nbreaks = length(A)
+    integrals = cumsum(pl_integral(A[i],α[i],breakpoints[i],breakpoints[i+1]) for i in 1:nbreaks) # calculate the cumulative integral
+    BPLSampler(A,α,breakpoints,integrals)
+end
+function rand(rng::AbstractRNG, s::BPLSampler)
+    x = rand(rng)
+    A,α,breakpoints,integrals = s.A,s.α,s.breakpoints,s.integrals
+    idx = findfirst(>=(x),integrals)  # find the first breakpoint where the cumulative integral   # up to each breakpoint 
+    idx != 1 && (x-=integrals[idx-1]) # is greater than x. If this is not the first breakpoint, then subtract off the cumulative integral
+    a = 1 - α[idx]
+    return (x*a/A[idx] + breakpoints[idx]^a)^(1/a)
+end
+sampler(d::BrokenPowerLaw) = BPLSampler(d)
