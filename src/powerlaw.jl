@@ -1,6 +1,28 @@
+# simple non-broken IMFs
+"""
+    PowerLawIMF(α::Real,mmin::Real,mmax::Real)
+
+Descibes a single power-law IMF with probability distribution
+
+```math
+    \\frac{dn(m)}{dm} = A \\times m^{-\\alpha}
+```
+
+truncated such that the probability distribution is 0 below `mmin` and above `mmax`. `A` is a normalization constant such that the distribution integrates to 1 from the minimum valid stellar mass `mmin` to the maximum valid stellar mass `mmax`. This is simply `Distributions.truncated(Distributions.Pareto(α-1,mmin);upper=mmax)`. See the documentation for [`Pareto`](https://juliastats.org/Distributions.jl/latest/univariate/#Distributions.Pareto) and [`truncated`](https://juliastats.org/Distributions.jl/latest/truncate/#Distributions.truncated).
+"""
 PowerLawIMF(α::Real,mmin::Real,mmax::Real) = truncated(Pareto(α-1,mmin);upper=mmax)
-Salpeter1955(mmin::Real=0.4,mmax::Real=10.0) = PowerLawIMF(2.35,mmin,mmax)
-Chabrier2001Lognormal(mmin::Real=0.08,mmax::Real=120.0) = truncated(LogNormal(-log(10),0.627*log(10)),mmin,mmax)
+"""
+    Salpeter1955(mmin::Real=0.4,mmax::Real=Inf)
+
+The IMF model of [Salpeter 1955](https://ui.adsabs.harvard.edu/abs/1955ApJ...121..161S/abstract), a [`PowerLawIMF`](@ref) with `α=2.35`.
+"""
+Salpeter1955(mmin::Real=0.4,mmax::Real=Inf) = PowerLawIMF(2.35,mmin,mmax)
+"""
+    Chabrier2001Lognormal(mmin::Real=0.08,mmax::Real=Inf)
+
+The [LogNormal](https://juliastats.org/Distributions.jl/latest/univariate/#Distributions.LogNormal) IMF model from [Chabrier 2001](https://ui.adsabs.harvard.edu/abs/2001ApJ...554.1274C/abstract) with no extended power law for large masses.
+"""
+Chabrier2001Lognormal(mmin::Real=0.08,mmax::Real=Inf) = truncated(LogNormal(-log(10),0.627*log(10)),mmin,mmax)
 
 struct Chabrier2003{T<:Real} <: AbstractIMF
     A1::T # lognormal parameter
@@ -60,7 +82,8 @@ BrokenPowerLaw(α::Tuple,breakpoints::Tuple) = BrokenPowerLaw(collect(promote(α
 BrokenPowerLaw(α::AbstractVector{T},breakpoints::AbstractVector{T}) where {T<:Real} = BrokenPowerLaw(convert(Vector{T},α),convert(Vector{T},breakpoints))
 function BrokenPowerLaw(α::AbstractVector{T},breakpoints::AbstractVector{S}) where {T<:Real,S<:Real}
     X = promote_type(T,S)
-    X == T ? BrokenPowerLaw(α,convert(Vector{T},breakpoints)) : BrokenPowerLaw(convert(Vector{S},α),breakpoints)
+    # X == T ? BrokenPowerLaw(α,convert(Vector{T},breakpoints)) : BrokenPowerLaw(convert(Vector{S},α),breakpoints)
+    BrokenPowerLaw(convert(Vector{X},α), convert(Vector{X},breakpoints))
 end
 # struct BrokenPowerLaw{T,N,S} <: AbstractIMF
 #     A::MVector{N,T}      # normalization parameters
@@ -90,7 +113,6 @@ end
 # end
 
 #### Conversions
-# convert(::Type{BrokenPowerLaw{T}}, α::Real, θ::Real) where {T<:Real} = Pareto(T(α), T(θ))
 Base.convert(::Type{BrokenPowerLaw{T}}, d::BrokenPowerLaw) where T = BrokenPowerLaw{T}(convert(Vector{T},d.A), convert(Vector{T},d.α), convert(Vector{T},d.breakpoints) )
 Base.convert(::Type{BrokenPowerLaw{T}}, d::BrokenPowerLaw{T}) where {T<:Real} = d
 
@@ -192,14 +214,14 @@ rand(rng::AbstractRNG, d::BrokenPowerLaw) = rand(rng, sampler(d))
 #######################################################
 # specific types of BrokenPowerLaw
 const kroupa2001_α = [0.3, 1.3, 2.3]
-const kroupa2001_breakpoints = [0.01,0.08,0.50,Inf]
+const kroupa2001_breakpoints = [0.0,0.08,0.50,Inf]
 """
-    Kroupa2001(mmin::Real=0.01,mmax::Real=Inf)
+    Kroupa2001(mmin::Real=0.08,mmax::Real=Inf)
 
-Function to instantiate a `BrokenPowerLaw` IMF with the parameters from Equation 2 of Kroupa 2001. This IMF is defined from `M=0.01` solar masses to `M=Inf`. This is equivalent to the relation given in Kroupa 2002, which appears to be more highly cited.
+Function to instantiate a `BrokenPowerLaw` IMF with the parameters from Equation 2 of [Kroupa 2001](https://ui.adsabs.harvard.edu/abs/2001MNRAS.322..231K/abstract). This is equivalent to the relation given in [Kroupa 2002](https://ui.adsabs.harvard.edu/abs/2002Sci...295...82K/abstract).
 """
-function Kroupa2001(mmin::T=0.01,mmax::T=Inf) where {T<:Real}
-    @assert mmin>=0.01
+function Kroupa2001(mmin::T=0.08,mmax::T=Inf) where {T<:Real}
+    @assert mmin>0
     # idx1 = max(1, findfirst(>(mmin),kroupa2001_breakpoints)-1)
     idx1 = findfirst(>(mmin),kroupa2001_breakpoints)-1
     idx2 = findfirst(>=(mmax),kroupa2001_breakpoints)
@@ -211,14 +233,14 @@ end
 Kroupa2001(mmin::Real,mmax::Real) = Kroup2001(promote(mmin,mmax)...)
 
 const chabrier2001bpl_α = [1.55,2.70]
-const chabrier2001bpl_breakpoints = [0.07,1.0,100.0]
+const chabrier2001bpl_breakpoints = [0.00,1.0,Inf]
 """
     Chabrier2001BPL(mmin::T=0.08,mmax::T=Inf)
 
-Function to instantiate a `BrokenPowerLaw` IMF with the parameters from the first column of Table 1 in Chabrier 2001. This IMF is defined from `M=0.07` solar masses to `M=100`.
+Function to instantiate a `BrokenPowerLaw` IMF with the parameters from the first column of Table 1 in [Chabrier 2001](https://ui.adsabs.harvard.edu/abs/2001ApJ...554.1274C/abstract).
 """
 function Chabrier2001BPL(mmin::T=0.08,mmax::T=Inf) where {T<:Real}
-    @assert mmin>=0.01
+    @assert mmin>0
     # idx1 = max(1, findfirst(>(mmin),kroupa2001_breakpoints)-1)
     idx1 = findfirst(>(mmin),chabrier2001bpl_breakpoints)-1
     idx2 = findfirst(>=(mmax),chabrier2001bpl_breakpoints)

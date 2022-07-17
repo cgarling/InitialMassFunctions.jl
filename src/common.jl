@@ -1,3 +1,4 @@
+""" Abstract type for IMFs; a subtype of `Distributions.ContinuousUnivariateDistribution`, as all IMF models can be described as continuous, univariate PDFs. """
 abstract type AbstractIMF <: ContinuousUnivariateDistribution end
 # """
 #     distribution(x::AbstractIMF)

@@ -2,7 +2,7 @@ module InitialMassFunctions
 
 import Distributions: ContinuousUnivariateDistribution, Pareto, LogNormal, truncated, pdf, logpdf, cdf, ccdf, minimum, maximum, partype, quantile, sampler, rand, Sampleable, Univariate, Continuous
 import Random:AbstractRNG
-import StaticArrays:MVector,SVector
+# import StaticArrays:MVector,SVector
 
 include("common.jl")
 include("powerlaw.jl")
