@@ -12,10 +12,8 @@ Kroupa2001(mmin::Real=0.08,mmax::Real=Inf)
 ```
 
 These all return subtypes of [`Distributions.ContinuousUnivariateDistribution`](https://juliastats.org/Distributions.jl/latest/univariate/#univariates) and have many of the typical `Distributions` methods defined for them. These include
- * pdf
- * logpdf
- * cdf
- * ccdf
- * quantile
- * rand
+ * pdf, logpdf
+ * cdf, ccdf
+ * quantile(d, x::Real), quantile(d,x::AbstractArray), quantile!(y::AbstractArray, d, x::AbstractArray)
+ * rand, rand!
  * minimum, maximum, extrema
