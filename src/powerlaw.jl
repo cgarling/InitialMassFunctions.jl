@@ -79,9 +79,9 @@ that is defined piecewise with different normalizations `A` and power law slopes
  - `partype(d::BrokenPowerLaw)`
  - `mean(d::BrokenPowerLaw)`
  - `median(d::BrokenPowerLaw)`
- - `var(d::BrokenPowerLaw)'         # may not function correctly for large maximum mass
- - `skewness(d::BrokenPowerLaw)`    # may not function correctly for large maximum mass
- - `kurtosis(d::BrokenPowerLaw)`    # may not function correctly for large maximum mass
+ - `var(d::BrokenPowerLaw)`, may not function correctly for large `mmax`
+ - `skewness(d::BrokenPowerLaw)`, may not function correctly for large `mmax`
+ - `kurtosis(d::BrokenPowerLaw)`, may not function correctly for large `mmax`
  - `pdf(d::BrokenPowerLaw,x::Real)`
  - `logpdf(d::BrokenPowerLaw,x::Real)`
  - `cdf(d::BrokenPowerLaw,x::Real)`
