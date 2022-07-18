@@ -18,11 +18,11 @@ The IMF model of [Salpeter 1955](https://ui.adsabs.harvard.edu/abs/1955ApJ...121
 """
 Salpeter1955(mmin::Real=0.4,mmax::Real=Inf) = PowerLawIMF(2.35,mmin,mmax)
 """
-    Chabrier2001Lognormal(mmin::Real=0.08,mmax::Real=Inf)
+    Chabrier2001LogNormal(mmin::Real=0.08,mmax::Real=Inf)
 
 The [LogNormal](https://juliastats.org/Distributions.jl/latest/univariate/#Distributions.LogNormal) IMF model from [Chabrier 2001](https://ui.adsabs.harvard.edu/abs/2001ApJ...554.1274C/abstract) with no extended power law for large masses.
 """
-Chabrier2001Lognormal(mmin::Real=0.08,mmax::Real=Inf) = truncated(LogNormal(-log(10),0.627*log(10)),mmin,mmax)
+Chabrier2001LogNormal(mmin::Real=0.08,mmax::Real=Inf) = truncated(LogNormal(-log(10),0.627*log(10)),mmin,mmax)
 
 struct Chabrier2003{T<:Real} <: AbstractIMF
     A1::T # lognormal parameter
