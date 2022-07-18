@@ -11,4 +11,11 @@ Chabrier2001LogNormal(mmin::Real=0.08,mmax::Real=Inf)
 Kroupa2001(mmin::Real=0.08,mmax::Real=Inf)
 ```
 
-These all return subtypes of [`Distributions.ContinuousUnivariateDistribution`](https://juliastats.org/Distributions.jl/latest/univariate/#univariates) and have many of the typical `Distributions` methods defined for them. 
+These all return subtypes of [`Distributions.ContinuousUnivariateDistribution`](https://juliastats.org/Distributions.jl/latest/univariate/#univariates) and have many of the typical `Distributions` methods defined for them. These include
+ * pdf
+ * logpdf
+ * cdf
+ * ccdf
+ * quantile
+ * rand
+ * minimum, maximum, extrema
