@@ -15,7 +15,7 @@ These all return subtypes of [`Distributions.ContinuousUnivariateDistribution`](
  * pdf, logpdf
  * cdf, ccdf
  * `quantile(d, x::Real), quantile(d,x::AbstractArray), quantile!(y::AbstractArray, d, x::AbstractArray)`
- * rand, rand!
+ * rand
  * minimum, maximum, extrema
 
 To do: implement Chabrier 2003 LogNormal + power law

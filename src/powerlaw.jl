@@ -85,8 +85,7 @@ that is defined piecewise with different normalizations `A` and power law slopes
  - `quantile!(result::AbstractArray,d::BrokenPowerLaw{S},x::AbstractArray{T}) where {S,T<:Real}`
  - `quantile(d::BrokenPowerLaw{T},x::AbstractArray{S})`
  - `rand(rng::AbstractRNG, d::BrokenPowerLaw,s...)` 
- - `rand!(rng::AbstractRNG, d::BrokenPowerLaw, x::AbstractArray)`
- - Other methods from `Distributions.jl` should also work because `BrokenPowerLaw <: AbstractIMF <: Distributions.ContinuousUnivariateDistribution`.
+ - Other methods from `Distributions.jl` should also work because `BrokenPowerLaw <: AbstractIMF <: Distributions.ContinuousUnivariateDistribution`. For example, `rand!(rng::AbstractRNG, d::BrokenPowerLaw, x::AbstractArray)`.
 """
 struct BrokenPowerLaw{T} <: AbstractIMF
     A::Vector{T}      # normalization parameters
