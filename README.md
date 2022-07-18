@@ -17,5 +17,8 @@ These all return subtypes of [`Distributions.ContinuousUnivariateDistribution`](
  * `quantile(d, x::Real), quantile(d,x::AbstractArray), quantile!(y::AbstractArray, d, x::AbstractArray)`
  * rand
  * minimum, maximum, extrema
+ * mean, median, var, skewness, kurtosis (some of the higher moments don't work for `mmax=Inf`)
+
+Many other functions that work on [`Distributions.ContinuousUnivariateDistribution`](https://juliastats.org/Distributions.jl/latest/univariate/#univariates) will also work transparently on these `AbstractIMF` instances.
 
 To do: implement Chabrier 2003 LogNormal + power law

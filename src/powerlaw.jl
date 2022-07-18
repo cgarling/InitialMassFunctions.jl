@@ -78,6 +78,10 @@ that is defined piecewise with different normalizations `A` and power law slopes
  - `maximum(d::BrokenPowerLaw)`
  - `partype(d::BrokenPowerLaw)`
  - `mean(d::BrokenPowerLaw)`
+ - `median(d::BrokenPowerLaw)`
+ - `var(d::BrokenPowerLaw)'         # may not function correctly for large maximum mass
+ - `skewness(d::BrokenPowerLaw)`    # may not function correctly for large maximum mass
+ - `kurtosis(d::BrokenPowerLaw)`    # may not function correctly for large maximum mass
  - `pdf(d::BrokenPowerLaw,x::Real)`
  - `logpdf(d::BrokenPowerLaw,x::Real)`
  - `cdf(d::BrokenPowerLaw,x::Real)`
@@ -165,6 +169,36 @@ function mean(d::BrokenPowerLaw)
     A,α,breakpoints = params(d)
     sum( (A[i]*breakpoints[i+1]^(2-α[i])/(2-α[i]) -
         A[i]*breakpoints[i]^(2-α[i])/(2-α[i]) for i in 1:length(A) ) )
+end
+median(d::BrokenPowerLaw{T}) where T = quantile(d,T(0.5)) # this is temporary
+# mode(d::BrokenPowerLaw) = d.breakpoints[argmin(d.α)] # this is not always correct
+
+function var(d::BrokenPowerLaw)
+    A,α,breakpoints = params(d)
+    sum( (A[i]*breakpoints[i+1]^(3-α[i])/(3-α[i]) -
+        A[i]*breakpoints[i]^(3-α[i])/(3-α[i]) for i in 1:length(A) ) ) - mean(d)^2
+end
+
+function skewness(d::BrokenPowerLaw)
+    A,α,breakpoints = params(d)
+    m=mean(d)
+    v=var(d)
+    ( sum( (A[i]*breakpoints[i+1]^(4-α[i])/(4-α[i]) -
+        A[i]*breakpoints[i]^(4-α[i])/(4-α[i]) for i in 1:length(A) ) ) - 3 * m * v - m^3) / v^(3/2)
+end
+
+function kurtosis(d::BrokenPowerLaw)
+    A,α,breakpoints = params(d)
+    X4 = sum( (A[i]*breakpoints[i+1]^(5-α[i])/(5-α[i]) -
+        A[i]*breakpoints[i]^(5-α[i])/(5-α[i]) for i in 1:length(A) ) )
+    X3 = sum( (A[i]*breakpoints[i+1]^(4-α[i])/(4-α[i]) -
+        A[i]*breakpoints[i]^(4-α[i])/(4-α[i]) for i in 1:length(A) ) )
+    X2 = sum( (A[i]*breakpoints[i+1]^(3-α[i])/(3-α[i]) -
+        A[i]*breakpoints[i]^(3-α[i])/(3-α[i]) for i in 1:length(A) ) )
+    X = sum( (A[i]*breakpoints[i+1]^(2-α[i])/(2-α[i]) -
+        A[i]*breakpoints[i]^(2-α[i])/(2-α[i]) for i in 1:length(A) ) )
+    μ4 = X4 - 4*X*X3 + 6*X^2*X2 - 3*X^4
+    μ4 / var(d)^2
 end
 
 #### Evaluation
@@ -259,6 +293,9 @@ function rand(rng::AbstractRNG, s::BPLSampler{T}) where T
 end
 sampler(d::BrokenPowerLaw) = BPLSampler(d)
 rand(rng::AbstractRNG, d::BrokenPowerLaw) = rand(rng, sampler(d))
+
+# custom functions
+# integrate(d::BrokenPowerLaw,a::Real,b::Real) = 
 
 #######################################################
 # specific types of BrokenPowerLaw

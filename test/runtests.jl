@@ -10,6 +10,14 @@ function test_bpl(d::BrokenPowerLaw)
     meanmass_gk = quadgk(x->x*pdf(d,x),mmin,mmax)
     # meanmass_gk = quadgk(x->exp(x)^2*pdf(d,exp(x)),log(mmin),log(mmax))
     @test meanmass_gk[1] ≈ mean(d) rtol=1e-12 atol=meanmass_gk[2] # test mean
+    var_gk = quadgk(x->x^2*pdf(d,x),mmin,mmax)
+    @test var_gk[1]-mean(d)^2 ≈ var(d) rtol=1e-12 atol=var_gk[2] # test variance
+    skew_gk = quadgk(x->x^3*pdf(d,x),mmin,mmax)
+    @test (skew_gk[1]-3*mean(d)*var(d)-mean(d)^3)/var(d)^(3/2) ≈ skewness(d) rtol=1e-5 atol=var_gk[2] # test skewness; higher error
+    dmean = mean(d)
+    var_d = var(d)
+    kurt_gk = quadgk(x->(x-dmean)^4 / var_d^2 * pdf(d,x),mmin,mmax)
+    @test kurt_gk[1] ≈ kurtosis(d) rtol=1e-10 atol=kurt_gk[2] # test kurtosis
 end
 
 # function test_type(T::Type,d::BrokenPowerLaw)
