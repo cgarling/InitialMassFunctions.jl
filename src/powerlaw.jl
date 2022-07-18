@@ -51,7 +51,43 @@ end
 ###########################################################################################
 # Broken Power Law 
 pl_integral(A,α,b1,b2) = A/(1-α) * (b2^(1-α) - b1^(1-α)) #definite integral of power law A*x^-α from b1 (lower) to b2 (upper)
+"""
+    BrokenPowerLaw(α::AbstractVector{T},breakpoints::AbstractVector{S}) where {T<:Real,S<:Real}
+    BrokenPowerLaw(α::Tuple,breakpoints::Tuple)
+    BrokenPowerLaw{T}(A::Vector{T},α::Vector{T},breakpoints::Vector{T}) where {T}
 
+An `AbstractIMF <: Distributions.ContinuousUnivariateDistribution` that describes a broken power-law IMF with probability distribution
+
+```math
+    \\frac{dn(m)}{dm} = A \\times m^{-\\alpha}
+```
+
+that is defined piecewise with different normalizations `A` and power law slopes `α` in different mass ranges. The normalization constants `A` will be calculated automatically after you provide the power law slopes and break points.
+
+# Arguments
+ - `α`; the power-law slopes of the different segments of the broken power law.
+ - `breakpoints`; the masses at which the power law slopes change. If `length(α)=n`, then `length(breakpoints)=n+1`.
+
+# Examples
+`BrokenPowerLaw([1.35,2.35],[0.08,1.0,Inf])` will instantiate a broken power law defined from a minimum mass of `0.08` to a maximum mass of `Inf` with a single switch in `α` at `m=1.0`. From `0.08 ≤ m ≤ 1.0`, `α = 1.35` and from `1.0 ≤ m ≤ Inf`, `α = 2.35`.
+
+# Methods
+ - `Base.convert(::Type{BrokenPowerLaw{T}}, d::BrokenPowerLaw)`
+ - `params(d::BrokenPowerLaw)`
+ - `minimum(d::BrokenPowerLaw)`
+ - `maximum(d::BrokenPowerLaw)`
+ - `partype(d::BrokenPowerLaw)`
+ - `pdf(d::BrokenPowerLaw,x::Real)`
+ - `logpdf(d::BrokenPowerLaw,x::Real)`
+ - `cdf(d::BrokenPowerLaw,x::Real)`
+ - `ccdf(d::BrokenPowerLaw,x::Real)`
+ - `quantile(d::BrokenPowerLaw{S},x::T) where {S,T<:Real}`
+ - `quantile!(result::AbstractArray,d::BrokenPowerLaw{S},x::AbstractArray{T}) where {S,T<:Real}`
+ - `quantile(d::BrokenPowerLaw{T},x::AbstractArray{S})`
+ - `rand(rng::AbstractRNG, d::BrokenPowerLaw,s...)` 
+ - `rand!(rng::AbstractRNG, d::BrokenPowerLaw, x::AbstractArray)`
+ - Other methods from `Distributions.jl` should also work because `BrokenPowerLaw <: AbstractIMF <: Distributions.ContinuousUnivariateDistribution`.
+"""
 struct BrokenPowerLaw{T} <: AbstractIMF
     A::Vector{T}      # normalization parameters
     α::Vector{T}      # power law indexes
@@ -218,7 +254,7 @@ const kroupa2001_breakpoints = [0.0,0.08,0.50,Inf]
 """
     Kroupa2001(mmin::Real=0.08,mmax::Real=Inf)
 
-Function to instantiate a `BrokenPowerLaw` IMF with the parameters from Equation 2 of [Kroupa 2001](https://ui.adsabs.harvard.edu/abs/2001MNRAS.322..231K/abstract). This is equivalent to the relation given in [Kroupa 2002](https://ui.adsabs.harvard.edu/abs/2002Sci...295...82K/abstract).
+Function to instantiate a [`BrokenPowerLaw`](@ref) IMF with the parameters from Equation 2 of [Kroupa 2001](https://ui.adsabs.harvard.edu/abs/2001MNRAS.322..231K/abstract). This is equivalent to the relation given in [Kroupa 2002](https://ui.adsabs.harvard.edu/abs/2002Sci...295...82K/abstract).
 """
 function Kroupa2001(mmin::T=0.08,mmax::T=Inf) where {T<:Real}
     @assert mmin>0
@@ -237,7 +273,7 @@ const chabrier2001bpl_breakpoints = [0.00,1.0,Inf]
 """
     Chabrier2001BPL(mmin::T=0.08,mmax::T=Inf)
 
-Function to instantiate a `BrokenPowerLaw` IMF with the parameters from the first column of Table 1 in [Chabrier 2001](https://ui.adsabs.harvard.edu/abs/2001ApJ...554.1274C/abstract).
+Function to instantiate a [`BrokenPowerLaw`](@ref) IMF with the parameters from the first column of Table 1 in [Chabrier 2001](https://ui.adsabs.harvard.edu/abs/2001ApJ...554.1274C/abstract).
 """
 function Chabrier2001BPL(mmin::T=0.08,mmax::T=Inf) where {T<:Real}
     @assert mmin>0
