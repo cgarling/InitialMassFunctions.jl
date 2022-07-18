@@ -77,6 +77,7 @@ that is defined piecewise with different normalizations `A` and power law slopes
  - `minimum(d::BrokenPowerLaw)`
  - `maximum(d::BrokenPowerLaw)`
  - `partype(d::BrokenPowerLaw)`
+ - `mean(d::BrokenPowerLaw)`
  - `pdf(d::BrokenPowerLaw,x::Real)`
  - `logpdf(d::BrokenPowerLaw,x::Real)`
  - `cdf(d::BrokenPowerLaw,x::Real)`
@@ -151,10 +152,23 @@ end
 Base.convert(::Type{BrokenPowerLaw{T}}, d::BrokenPowerLaw) where T = BrokenPowerLaw{T}(convert(Vector{T},d.A), convert(Vector{T},d.α), convert(Vector{T},d.breakpoints) )
 Base.convert(::Type{BrokenPowerLaw{T}}, d::BrokenPowerLaw{T}) where {T<:Real} = d
 
+#### Parameters
+
 params(d::BrokenPowerLaw) = d.A,d.α,d.breakpoints
 minimum(d::BrokenPowerLaw) = minimum(d.breakpoints)
 maximum(d::BrokenPowerLaw) = maximum(d.breakpoints)
 partype(d::BrokenPowerLaw{T}) where T = T
+
+#### Statistics
+
+function mean(d::BrokenPowerLaw)
+    A,α,breakpoints = params(d)
+    sum( (A[i]*breakpoints[i+1]^(2-α[i])/(2-α[i]) -
+        A[i]*breakpoints[i]^(2-α[i])/(2-α[i]) for i in 1:length(A) ) )
+end
+
+#### Evaluation
+
 function pdf(d::BrokenPowerLaw,x::Real)
     ((x < minimum(d)) || (x > maximum(d))) && (return zero(partype(d)))
     idx = findfirst(>=(x),d.breakpoints)
