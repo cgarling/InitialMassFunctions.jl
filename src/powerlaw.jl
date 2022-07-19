@@ -49,7 +49,8 @@ function pdf(d::Chabrier2003,m::Real)
 end
 
 ###########################################################################################
-# Broken Power Law 
+# Broken Power Law
+###########################################################################################
 pl_integral(A,α,b1,b2) = A/(1-α) * (b2^(1-α) - b1^(1-α)) #definite integral of power law A*x^-α from b1 (lower) to b2 (upper)
 """
     BrokenPowerLaw(α::AbstractVector{T},breakpoints::AbstractVector{S}) where {T<:Real,S<:Real}
