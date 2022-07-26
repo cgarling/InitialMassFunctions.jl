@@ -6,6 +6,7 @@ import Random:AbstractRNG
 
 include("common.jl")
 include("powerlaw.jl")
+include("lognormal.jl")
 
 export PowerLawIMF,Salpeter1955,Chabrier2001LogNormal,Chabrier2003,Kroupa2001,Chabrier2001BPL
 export BrokenPowerLaw, mean, median, var, skewness, kurtosis, pdf, logpdf, cdf, ccdf, partype, eltype, minimum, maximum, quantile
