@@ -21,7 +21,15 @@ Salpeter1955(mmin::Real=0.4,mmax::Real=Inf) = PowerLawIMF(2.35,mmin,mmax)
 ###########################################################################################
 # Broken Power Law
 ###########################################################################################
+"""
+    pl_integral(A,α,b1,b2)
 
+Definite integral of power law ``A*x^{-α}`` from b1 (lower) to b2 (upper).
+
+```math
+\\int_{b1}^{b2} \\, A \\times x^{-\\alpha} \\, dx = \\frac{A}{1-\\alpha} \\times \\left( b2^{1-\\alpha} - b1^{1-\\alpha} \\right)
+```
+"""
 pl_integral(A,α,b1,b2) = A/(1-α) * (b2^(1-α) - b1^(1-α)) #definite integral of power law A*x^-α from b1 (lower) to b2 (upper)
 """
     BrokenPowerLaw(α::AbstractVector{T},breakpoints::AbstractVector{S}) where {T<:Real,S<:Real}
@@ -61,6 +69,7 @@ that is defined piecewise with different normalizations `A` and power law slopes
  - `quantile(d::BrokenPowerLaw{S},x::T) where {S,T<:Real}`
  - `quantile!(result::AbstractArray,d::BrokenPowerLaw{S},x::AbstractArray{T}) where {S,T<:Real}`
  - `quantile(d::BrokenPowerLaw{T},x::AbstractArray{S})`
+ - `cquantile(d::BrokenPowerLaw{S},x::T) where {S,T<:Real}`
  - `rand(rng::AbstractRNG, d::BrokenPowerLaw,s...)` 
  - Other methods from `Distributions.jl` should also work because `BrokenPowerLaw <: AbstractIMF <: Distributions.ContinuousUnivariateDistribution`. For example, `rand!(rng::AbstractRNG, d::BrokenPowerLaw, x::AbstractArray)`.
 """
@@ -129,14 +138,12 @@ Base.convert(::Type{BrokenPowerLaw{T}}, d::BrokenPowerLaw) where T = BrokenPower
 Base.convert(::Type{BrokenPowerLaw{T}}, d::BrokenPowerLaw{T}) where {T<:Real} = d
 
 #### Parameters
-
 params(d::BrokenPowerLaw) = d.A,d.α,d.breakpoints
 minimum(d::BrokenPowerLaw) = minimum(d.breakpoints)
 maximum(d::BrokenPowerLaw) = maximum(d.breakpoints)
 partype(d::BrokenPowerLaw{T}) where T = T
 
 #### Statistics
-
 function mean(d::BrokenPowerLaw)
     A,α,breakpoints = params(d)
     sum( (A[i]*breakpoints[i+1]^(2-α[i])/(2-α[i]) -
@@ -199,7 +206,7 @@ function cdf(d::BrokenPowerLaw,x::Real)
         return one(partype(d))
     end
     A,α,breakpoints = params(d)
-    idx = findfirst(>=(x),d.breakpoints)
+    idx = findfirst(>=(x),breakpoints)
     idx != 1 && (idx-=1)
     result = sum(pl_integral(A[i],α[i],breakpoints[i],min(x,breakpoints[i+1])) for i in 1:idx)
 end
@@ -233,7 +240,7 @@ function quantile!(result::AbstractArray,d::BrokenPowerLaw{S},x::AbstractArray{T
     return result
 end
 quantile(d::BrokenPowerLaw{T},x::AbstractArray{S}) where {T,S<:Real} = quantile!(Array{promote_type(T,S)}(undef,size(x)),d,x)
-
+cquantile(d::BrokenPowerLaw,x::Real) = 1 - quantile(d,x)
 ##### Random sampling
 
 # Implementing efficient sampler. We need the cumulative integral up to each breakpoint in
@@ -270,7 +277,9 @@ rand(rng::AbstractRNG, d::BrokenPowerLaw) = rand(rng, sampler(d))
 # integrate(d::BrokenPowerLaw,a::Real,b::Real) = 
 
 #######################################################
-# specific types of BrokenPowerLaw
+# Specific types of BrokenPowerLaw
+#######################################################
+
 const kroupa2001_α = [0.3, 1.3, 2.3]
 const kroupa2001_breakpoints = [0.0,0.08,0.50,Inf]
 """
