@@ -19,6 +19,7 @@ These all return subtypes of [`Distributions.ContinuousUnivariateDistribution`](
  * rand
  * minimum, maximum, extrema
  * mean, median, var, skewness, kurtosis (some of the higher moments don't work for `mmax=Inf` with instances of `BrokenPowerLaw`)
+ 
 Note that `var`, `skewness`, and `kurtosis` are not currently defined for instances of `LogNormalBPL`, such as those returned by the `Chabrier2003` function. 
 
 Many other functions that work on [`Distributions.ContinuousUnivariateDistribution`](https://juliastats.org/Distributions.jl/latest/univariate/#univariates) will also work transparently on these `AbstractIMF` instances.
