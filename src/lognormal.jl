@@ -14,8 +14,9 @@ Definite integral of the lognormal probability distribution from `b1` to `b2`.
 \\int_{b1}^{b2} \\, \\frac{A}{x} \\, \\exp \\left[ \\frac{ -\\left( \\log(x) - \\mu \\right)^2}{2\\sigma^2} \\right] \\, dx
 ```
 """
-lognormal_integral(A,μ,σ,b1,b2) = A * sqrt(π/2) * σ * (erf( (μ-log(b1))/(sqrt(2)*σ)) - erf( (μ-log(b2))/(sqrt(2)*σ)))
-
+lognormal_integral(A::T,μ::T,σ::T,b1::T,b2::T) where {T<:Number} = A * sqrt(T(π)/2) * σ * (erf( (μ-log(b1))/(sqrt(T(2))*σ)) - erf( (μ-log(b2))/(sqrt(T(2))*σ)))
+lognormal_integral(A::Number,μ::Number,σ::Number,b1::Number,b2::Number) = lognormal_integral(promote(A,μ,σ,b1,b2)...)
+# lognormal_integral(A,μ,σ,b1,b2) = A * sqrt(π/2) * σ * (erf( (μ-log(b1))/(sqrt(2)*σ)) - erf( (μ-log(b2))/(sqrt(2)*σ)))
 """
     LogNormalBPL(μ::Real,σ::Real,α::AbstractVector{<:Real},breakpoints::AbstractVector{<:Real})
     LogNormalBPL(μ::Real,σ::Real,α::Tuple,breakpoints::Tuple)
@@ -84,8 +85,10 @@ partype(d::LogNormalBPL{T}) where T = T
 function mean(d::LogNormalBPL{T}) where T
     μ,σ,A,α,breakpoints = params(d)
     m = zero(T)
-    m += A[1] * exp(μ + σ^2/2) * sqrt(π/2) * σ * (erf( (μ+σ^2-log(breakpoints[1])) / (sqrt(2)*σ) ) -
-        erf( (μ+σ^2-log(breakpoints[2])) / (sqrt(2)*σ) ) )
+    # m += A[1] * exp(μ + σ^2/2) * sqrt(π/2) * σ * (erf( (μ+σ^2-log(breakpoints[1])) / (sqrt(2)*σ) ) -
+    #     erf( (μ+σ^2-log(breakpoints[2])) / (sqrt(2)*σ) ) )
+    m += A[1] * exp(μ + σ^2/2) * sqrt(T(π)/2) * σ * (erf( (μ+σ^2-log(breakpoints[1])) / (sqrt(T(2))*σ) ) -
+        erf( (μ+σ^2-log(breakpoints[2])) / (sqrt(T(2))*σ) ) )
     m += sum( (A[i]*breakpoints[i+1]^(2-α[i-1])/(2-α[i-1]) -
         A[i]*breakpoints[i]^(2-α[i-1])/(2-α[i-1]) for i in 2:length(A) ) )
     return m
@@ -167,14 +170,15 @@ function quantile(d::LogNormalBPL{S},x::T) where {S,T<:Real}
     cumsum!(integrals,integrals)
     idx = findfirst(>=(x),integrals)  # find the first breakpoint where the cumulative integral
     if idx == 1
-        return exp(μ - sqrt(2) * σ * erfinv( (A[1] * π * σ * erf((μ-log(breakpoints[1]))/(sqrt(2)*σ)) - sqrt(2π)*x) / (A[1]*π*σ) ))
+        # return exp(μ - sqrt(2) * σ * erfinv( (A[1] * π * σ * erf((μ-log(breakpoints[1]))/(sqrt(2)*σ)) - sqrt(2π)*x) / (A[1]*π*σ) ))
+        return exp(μ - sqrt(U(2)) * σ * erfinv( (A[1] * π * σ * erf((μ-log(breakpoints[1]))/(sqrt(U(2))*σ)) - sqrt(U(2π))*x) / (A[1]*π*σ) ))
     else
         x -= integrals[idx-1]   # If this is not the first breakpoint, then subtract off the cumulative integral and solve 
         a = one(S) - α[idx-1] # using power law CDF inversion
         return (x*a/A[idx] + breakpoints[idx]^a)^inv(a)
     end
 end
-function quantile!(result::AbstractArray,d::LogNormalBPL{S},x::AbstractArray{T}) where {S,T<:Real}
+function quantile!(result::AbstractArray{U},d::LogNormalBPL{S},x::AbstractArray{T}) where {S,T<:Real,U<:Real}
     @assert size(result) == size(x)
     μ,σ,A,α,breakpoints = params(d)
     nbreaks = length(A)
@@ -192,7 +196,8 @@ function quantile!(result::AbstractArray,d::LogNormalBPL{S},x::AbstractArray{T})
         xi>=one(T) && (result[i]=maximum(d); continue)
         idx = findfirst(>=(xi),integrals)  # find the first breakpoint where the cumulative integral   # up to each breakpoint 
         if idx == 1
-            result[i] = exp(μ - sqrt(2) * σ * erfinv( (A[1] * π * σ * erf((μ-log(breakpoints[1]))/(sqrt(2)*σ)) - sqrt(2π)*xi) / (A[1]*π*σ) ))
+            # result[i] = exp(μ - sqrt(2) * σ * erfinv( (A[1] * π * σ * erf((μ-log(breakpoints[1]))/(sqrt(2)*σ)) - sqrt(2π)*xi) / (A[1]*π*σ) ))
+            result[i] = exp(μ - sqrt(U(2)) * σ * erfinv( (A[1] * π * σ * erf((μ-log(breakpoints[1]))/(sqrt(U(2))*σ)) - sqrt(U(2π))*xi) / (A[1]*π*σ) ))
         else
             xi -= integrals[idx-1]   # If this is not the first breakpoint, then subtract off the cumulative integral and solve 
             a = one(S) - α[idx-1] # using power law CDF inversion
@@ -202,7 +207,7 @@ function quantile!(result::AbstractArray,d::LogNormalBPL{S},x::AbstractArray{T})
     return result
 end
 quantile(d::LogNormalBPL{T},x::AbstractArray{S}) where {T,S<:Real} = quantile!(Array{promote_type(T,S)}(undef,size(x)),d,x)
-cquantile(d::LogNormalBPL,x::Real) = 1 - quantile(d,x)
+cquantile(d::LogNormalBPL,x::Real) = quantile(d,1-x)
 
 #### Random sampling
 struct LogNormalBPLSampler{T} <: Sampleable{Univariate,Continuous}
@@ -231,7 +236,8 @@ function rand(rng::AbstractRNG, s::LogNormalBPLSampler{T}) where T
     μ,σ,A,α,breakpoints,integrals = s.μ,s.σ,s.A,s.α,s.breakpoints,s.integrals
     idx = findfirst(>=(x),integrals)  # find the first breakpoint where the cumulative integral   # up to each breakpoint 
     if idx == 1
-        return exp(μ - sqrt(2) * σ * erfinv( (A[1] * π * σ * erf((μ-log(breakpoints[1]))/(sqrt(2)*σ)) - sqrt(2π)*x) / (A[1]*π*σ) ))
+        # return exp(μ - sqrt(2) * σ * erfinv( (A[1] * π * σ * erf((μ-log(breakpoints[1]))/(sqrt(2)*σ)) - sqrt(2π)*x) / (A[1]*π*σ) ))
+        return exp(μ - sqrt(T(2)) * σ * erfinv( (A[1] * π * σ * erf((μ-log(breakpoints[1]))/(sqrt(T(2))*σ)) - sqrt(T(2π))*x) / (A[1]*π*σ) ))
     else
         x -= integrals[idx-1]   # If this is not the first breakpoint, then subtract off the cumulative integral and solve 
         a = one(T) - α[idx-1] # using power law CDF inversion

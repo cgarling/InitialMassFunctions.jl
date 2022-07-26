@@ -240,7 +240,7 @@ function quantile!(result::AbstractArray,d::BrokenPowerLaw{S},x::AbstractArray{T
     return result
 end
 quantile(d::BrokenPowerLaw{T},x::AbstractArray{S}) where {T,S<:Real} = quantile!(Array{promote_type(T,S)}(undef,size(x)),d,x)
-cquantile(d::BrokenPowerLaw,x::Real) = 1 - quantile(d,x)
+cquantile(d::BrokenPowerLaw,x::Real) = quantile(d,1-x)
 ##### Random sampling
 
 # Implementing efficient sampler. We need the cumulative integral up to each breakpoint in
