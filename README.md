@@ -12,7 +12,7 @@ Chabrier2003(mmin::Real=0.08,mmax::Real=Inf)
 Kroupa2001(mmin::Real=0.08,mmax::Real=Inf)
 ```
 
-These all return subtypes of [`Distributions.ContinuousUnivariateDistribution`](https://juliastats.org/Distributions.jl/latest/univariate/#univariates) and have many of the typical `Distributions` methods defined for them. These include
+These all return subtypes of [`Distributions.ContinuousUnivariateDistribution`](https://juliastats.org/Distributions.jl/latest/univariate/#univariates) and have many of the typical methods from [`Distributions.jl`](https://github.com/JuliaStats/Distributions.jl) defined for them. These include
  * pdf, logpdf
  * cdf, ccdf
  * `quantile(d, x::Real), quantile(d,x::AbstractArray), quantile!(y::AbstractArray, d, x::AbstractArray)`
@@ -20,6 +20,8 @@ These all return subtypes of [`Distributions.ContinuousUnivariateDistribution`](
  * minimum, maximum, extrema
  * mean, median, var, skewness, kurtosis (some of the higher moments don't work for `mmax=Inf` with instances of `BrokenPowerLaw`)
  
-Note that `var`, `skewness`, and `kurtosis` are not currently defined for instances of `LogNormalBPL`, such as those returned by the `Chabrier2003` function. 
+Note that `var`, `skewness`, and `kurtosis` are not currently defined for instances of `LogNormalBPL`, such as those returned by the `Chabrier2003` function.
 
 Many other functions that work on [`Distributions.ContinuousUnivariateDistribution`](https://juliastats.org/Distributions.jl/latest/univariate/#univariates) will also work transparently on these `AbstractIMF` instances.
+
+Continous broken-power-law distributions (such as those used in [Chabrier 2001](https://ui.adsabs.harvard.edu/abs/2001ApJ...554.1274C/abstract) and [Kroupa 2001](https://ui.adsabs.harvard.edu/abs/2001MNRAS.322..231K/abstract)) are provided through a new `BrokenPowerLaw` type. The lognormal distribution for masses `m<1.0` with a power law extension for higher masses as given in [Chabrier 2003](https://ui.adsabs.harvard.edu/abs/2003PASP..115..763C/abstract) is provided by a new `LogNormalBPL` type. Simpler models (e.g., `Salpeter1955` and `Chabrier2001LogNormal`) are implemented using built-in distributions from [`Distributions.jl`](https://github.com/JuliaStats/Distributions.jl) in concert with their very nice [`truncated`](https://juliastats.org/Distributions.jl/stable/truncate/#Distributions.truncated) function. 
