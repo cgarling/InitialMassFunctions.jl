@@ -5,7 +5,7 @@ InitialMassFunctions.jl
 [![](https://img.shields.io/badge/docs-latest-blue.svg)](https://cgarling.github.io/InitialMassFunctions.jl/latest/)
 [![](https://img.shields.io/badge/docs-stable-blue.svg)](https://cgarling.github.io/InitialMassFunctions.jl/stable/)
 
-Stellar initial mass functions describe the distribution of initial masses that stars are born with. This package aims to implement and provide interfaces for working with initial mass functions, including but not limited to evaluating and sampling from published distributions.
+Stellar initial mass functions describe the distribution of initial masses that stars are born with. This package aims to implement and provide interfaces for working with initial mass functions, including but not limited to evaluating and sampling from published distributions. See the linked documentation above for more details.
 
 Published IMFs we include are
 ```julia
