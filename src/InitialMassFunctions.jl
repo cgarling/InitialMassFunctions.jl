@@ -10,8 +10,8 @@ include("powerlaw.jl")
 include("lognormal.jl")
 
 export PowerLawIMF, Salpeter1955, Kroupa2001, Chabrier2001BPL
-export Chabrier2003, Chabrier2001LogNormal       # lognormal constructors
-export BrokenPowerLaw, LogNormalBPL, mean, median, var, skewness, kurtosis, pdf, logpdf, cdf, ccdf, partype, eltype, minimum, maximum, quantile, quantile!, cquantile
+export LogNormalIMF, Chabrier2003, Chabrier2001LogNormal       # lognormal constructors
+export BrokenPowerLaw, LogNormalBPL, mean, median, var, skewness, kurtosis, pdf, logpdf, cdf, ccdf, partype, minimum, maximum, quantile, quantile!, cquantile
 # export normalization, slope, logslope, dndm, dndlogm, pdf, logpdf, cdf, median
 
 end # module

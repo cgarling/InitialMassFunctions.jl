@@ -7,6 +7,6 @@ makedocs(
     modules = [InitialMassFunctions],
     format = Documenter.HTML(;prettyurls = get(ENV, "CI", nothing) == "true"),
     authors = "Chris Garling",
-    pages = ["index.md","api.md"],
+    pages = ["constructors.md","types.md","utilities.md","index.md"],
     doctest=true
 )

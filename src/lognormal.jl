@@ -1,10 +1,26 @@
 """
+    LogNormalIMF(μ::Real,σ::Real,mmin::Real,mmax::Real)
+
+Describes a lognormal IMF with probability distribution
+
+```math
+    \\frac{dn(m)}{dm} = \\frac{A}{x} \\, \\exp \\left[ \\frac{ -\\left( \\log(x) - \\mu \\right)^2}{2\\sigma^2} \\right]
+```
+
+truncated such that the probability distribution is 0 below `mmin` and above `mmax`. `A` is a normalization constant such that the distribution integrates to 1 from the minimum valid stellar mass `mmin` to the maximum valid stellar mass `mmax`. This is simply `Distributions.truncated(Distributions.LogNormal(μ,σ);lower=mmin,upper=mmax)`. See the documentation for [`LogNormal`](https://juliastats.org/Distributions.jl/stable/univariate/#Distributions.LogNormal) and [`truncated`](https://juliastats.org/Distributions.jl/latest/truncate/#Distributions.truncated).
+
+# Arguments
+ - `μ`; see [Distributions.LogNormal](https://juliastats.org/Distributions.jl/stable/univariate/#Distributions.LogNormal)
+ - `σ`; see [Distributions.LogNormal](https://juliastats.org/Distributions.jl/stable/univariate/#Distributions.LogNormal)
+"""
+LogNormalIMF(μ::Real,σ::Real,mmin::Real,mmax::Real) = truncated(LogNormal(μ,σ);lower=mmin,upper=mmax)
+
+"""
     Chabrier2001LogNormal(mmin::Real=0.08,mmax::Real=Inf)
 
 Function to instantiate the [Chabrier 2001](https://ui.adsabs.harvard.edu/abs/2001ApJ...554.1274C/abstract) lognormal IMF. Returns an instance of `Distributions.Truncated(Distributions.LogNormal)`. See also [`Chabrier2003`](@ref) which has the same lognormal form for masses below one solar mass, but a power law extension at higher masses. 
 """
-Chabrier2001LogNormal(mmin::Real=0.08,mmax::Real=Inf) = truncated(LogNormal(log(0.1),0.627*log(10));lower=mmin,upper=mmax)
-# Chabrier2001LogNormal(mmin::Real=0.08,mmax::Real=Inf) = truncated(LogNormal(log(0.1)*log(10),0.627*log(10));lower=mmin,upper=mmax)
+Chabrier2001LogNormal(mmin::Real=0.08,mmax::Real=Inf) = LogNormalIMF(log(0.1),0.627*log(10),mmin,mmax)
 
 """
     lognormal_integral(μ,σ,b1,b2)
@@ -21,14 +37,39 @@ lognormal_integral(A::Number,μ::Number,σ::Number,b1::Number,b2::Number) = logn
     LogNormalBPL(μ::Real,σ::Real,α::AbstractVector{<:Real},breakpoints::AbstractVector{<:Real})
     LogNormalBPL(μ::Real,σ::Real,α::Tuple,breakpoints::Tuple)
 
-A LogNormal distribution at low masses, with a broken power law extension at high masses. This uses the natural log base like `Distributions.LogNormal`; if you have σ and μ in base 10, then multiply them both by `log(10)`. Must have `length(α) == length(breakpoints)-2`. The probability distribution for this IMF model is
+A LogNormal distribution at low masses, with a broken power law extension at high masses. This uses the natural log base like [Distributions.LogNormal](https://juliastats.org/Distributions.jl/stable/univariate/#Distributions.LogNormal); if you have σ and μ in base 10, then multiply them both by `log(10)`. Must have `length(α) == length(breakpoints)-2`. The probability distribution for this IMF model is
 
 ```math
     \\frac{dn(m)}{dm} = \\frac{A}{x} \\, \\exp \\left[ \\frac{ -\\left( \\log(x) - \\mu \\right)^2}{2\\sigma^2} \\right]
 ```
+for `m < breakpoints[2]`, with a broken power law extension above this mass. See [`BrokenPowerLaw`](@ref) for interface details; the `α` and `breakpoints` are the same here as there.
+
+# Arguments
+ - `μ`; see [Distributions.LogNormal](https://juliastats.org/Distributions.jl/stable/univariate/#Distributions.LogNormal)
+ - `σ`; see [Distributions.LogNormal](https://juliastats.org/Distributions.jl/stable/univariate/#Distributions.LogNormal)
+ - `α`; list of power law indices with `length(α) == length(breakpoints)-2`.
+ - `breakpoints`; list of masses that signal breaks in the IMF. MUST BE SORTED and bracketed with `breakpoints[1]` being the minimum valid mass and `breakpoints[end]` being the maximum valid mass.
 
 # Examples
-If you want a `LogNormalBPL` with a characteristic mass of 0.5 solar masses, log10 standard deviation of 0.6, and a single power law extension with slope `α=2.35` with a break at 1 solar mass, you would do `LogNormalBPL(log(0.5),0.6*log(10),[2.35],[0.08,1.0,Inf]` where we set the minimum mass to `0.08` and maximum mass to `Inf`. If, instead, you know that `log10(m)=x`, where `m` is the characteristic mass of the `LogNormal` component, you would do `LogNormalBPL(x*log(10),0.6*log(10),[2.35],[0.08,1.0,Inf]`
+If you want a `LogNormalBPL` with a characteristic mass of 0.5 solar masses, log10 standard deviation of 0.6, and a single power law extension with slope `α=2.35` with a break at 1 solar mass, you would do `LogNormalBPL(log(0.5),0.6*log(10),[2.35],[0.08,1.0,Inf]` where we set the minimum mass to `0.08` and maximum mass to `Inf`. If, instead, you know that `log10(m)=x`, where `m` is the characteristic mass of the `LogNormal` component, you would do `LogNormalBPL(x*log(10),0.6*log(10),[2.35],[0.08,1.0,Inf]`.
+
+# Methods
+ - `Base.convert(::Type{BrokenPowerLaw{T}}, d::BrokenPowerLaw)`
+ - `minimum(d::BrokenPowerLaw)`
+ - `maximum(d::BrokenPowerLaw)`
+ - `partype(d::BrokenPowerLaw)`
+ - `mean(d::BrokenPowerLaw)`
+ - `median(d::BrokenPowerLaw)`
+ - `pdf(d::BrokenPowerLaw,x::Real)`
+ - `logpdf(d::BrokenPowerLaw,x::Real)`
+ - `cdf(d::BrokenPowerLaw,x::Real)`
+ - `ccdf(d::BrokenPowerLaw,x::Real)`
+ - `quantile(d::BrokenPowerLaw{S},x::T) where {S,T<:Real}`
+ - `quantile!(result::AbstractArray,d::BrokenPowerLaw{S},x::AbstractArray{T}) where {S,T<:Real}`
+ - `quantile(d::BrokenPowerLaw{T},x::AbstractArray{S})`
+ - `cquantile(d::BrokenPowerLaw{S},x::T) where {S,T<:Real}`
+ - `rand(rng::AbstractRNG, d::BrokenPowerLaw,s...)` 
+ - Other methods from `Distributions.jl` should also work because `LogNormalBPL <: AbstractIMF <: Distributions.ContinuousUnivariateDistribution`. For example, `rand!(rng::AbstractRNG, d::BrokenPowerLaw, x::AbstractArray)`.
 """
 struct LogNormalBPL{T} <: AbstractIMF
     μ::T

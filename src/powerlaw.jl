@@ -53,7 +53,6 @@ that is defined piecewise with different normalizations `A` and power law slopes
 
 # Methods
  - `Base.convert(::Type{BrokenPowerLaw{T}}, d::BrokenPowerLaw)`
- - `params(d::BrokenPowerLaw)`
  - `minimum(d::BrokenPowerLaw)`
  - `maximum(d::BrokenPowerLaw)`
  - `partype(d::BrokenPowerLaw)`
