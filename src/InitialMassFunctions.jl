@@ -5,12 +5,14 @@ import Random:AbstractRNG
 import SpecialFunctions:erf,erfinv
 # import StaticArrays:MVector,SVector
 
-include("common.jl")
+""" Abstract type for IMFs; a subtype of `Distributions.ContinuousUnivariateDistribution`, as all IMF models can be described as continuous, univariate PDFs. """
+abstract type AbstractIMF <: ContinuousUnivariateDistribution end
+
 include("powerlaw.jl")
 include("lognormal.jl")
 
 export PowerLawIMF, Salpeter1955, Kroupa2001, Chabrier2001BPL
-export LogNormalIMF, Chabrier2003, Chabrier2001LogNormal       # lognormal constructors
+export LogNormalIMF, Chabrier2003, Chabrier2001LogNormal # lognormal constructors
 export BrokenPowerLaw, LogNormalBPL, mean, median, var, skewness, kurtosis, pdf, logpdf, cdf, ccdf, partype, minimum, maximum, quantile, quantile!, cquantile
 # export normalization, slope, logslope, dndm, dndlogm, pdf, logpdf, cdf, median
 

@@ -1,4 +1,4 @@
-# InitialMassFunction.jl Index
+# Index
 
 ```@index
 ```
