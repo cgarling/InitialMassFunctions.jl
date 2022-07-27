@@ -10,3 +10,9 @@ makedocs(
     pages = ["constructors.md","types.md","utilities.md","index.md"],
     doctest=true
 )
+
+deploydocs(;
+    repo = "github.com/cgarling/InitialMassFunctions.jl.git",
+    versions = ["stable" => "v^", "v#.#", "dev" => "master"],
+    push_preview=true,
+)
