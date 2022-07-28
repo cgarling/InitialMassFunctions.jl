@@ -13,6 +13,6 @@ makedocs(
 
 deploydocs(;
     repo = "github.com/cgarling/InitialMassFunctions.jl.git",
-    versions = ["stable" => "v^", "v#.#", "dev" => "main"],
+    versions = ["stable" => "v^", "v#.#", "dev" => "master"],
     push_preview=true,
 )
