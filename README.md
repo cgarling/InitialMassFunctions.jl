@@ -32,4 +32,7 @@ Many other functions that work on [`Distributions.ContinuousUnivariateDistributi
 
 Continous broken-power-law distributions (such as those used in [Chabrier 2001](https://ui.adsabs.harvard.edu/abs/2001ApJ...554.1274C/abstract) and [Kroupa 2001](https://ui.adsabs.harvard.edu/abs/2001MNRAS.322..231K/abstract)) are provided through a new `BrokenPowerLaw` type. The lognormal distribution for masses `m<1.0` with a power law extension for higher masses as given in [Chabrier 2003](https://ui.adsabs.harvard.edu/abs/2003PASP..115..763C/abstract) is provided by a new `LogNormalBPL` type. Simpler models (e.g., `Salpeter1955` and `Chabrier2001LogNormal`) are implemented using built-in distributions from [`Distributions.jl`](https://github.com/JuliaStats/Distributions.jl) in concert with their very nice [`truncated`](https://juliastats.org/Distributions.jl/stable/truncate/#Distributions.truncated) function.
 
-Efficient samplers are implemented for the new types `BrokenPowerLaw` and `LogNormalBPL` such that batched calls (e.g., `rand(Chabrier2003(),1000)`) are more efficient than single calls (e.g., `d=Chabrier2003(); [rand(d) for i in 1:1000]`). 
+Efficient samplers are implemented for the new types `BrokenPowerLaw` and `LogNormalBPL` such that batched calls (e.g., `rand(Chabrier2003(),1000)`) are more efficient than single calls (e.g., `d=Chabrier2003(); [rand(d) for i in 1:1000]`).
+
+## Versioning
+`InitialMassFunctions.jl` follows Julia's [recommended versioning strategy](https://pkgdocs.julialang.org/v1/compatibility/#compat-pre-1.0), where breaking changes prior to version 1.0 will result in a bump of the minor version (e.g., 0.1.x |> 0.2.0) whereas feature additions and bug patches will increment the patch version (0.1.0 |> 0.1.1). 
