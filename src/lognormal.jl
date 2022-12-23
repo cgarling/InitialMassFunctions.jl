@@ -53,23 +53,26 @@ for `m < breakpoints[2]`, with a broken power law extension above this mass. See
 # Examples
 If you want a `LogNormalBPL` with a characteristic mass of 0.5 solar masses, log10 standard deviation of 0.6, and a single power law extension with slope `α=2.35` with a break at 1 solar mass, you would do `LogNormalBPL(log(0.5),0.6*log(10),[2.35],[0.08,1.0,Inf]` where we set the minimum mass to `0.08` and maximum mass to `Inf`. If, instead, you know that `log10(m)=x`, where `m` is the characteristic mass of the `LogNormal` component, you would do `LogNormalBPL(x*log(10),0.6*log(10),[2.35],[0.08,1.0,Inf]`.
 
+# Notes
+There is some setup necessary for `quantile` and other derived methods, so it is more efficient to call these methods directly with an array via the call signature `quantile(d::LogNormalBPL{T}, x::AbstractArray{S})` rather than broadcasting over `x`. This behavior is now deprecated for `quantile(d::Distributions.UnivariateDistribution, X::AbstractArray)` in Distributions.jl. 
+
 # Methods
- - `Base.convert(::Type{BrokenPowerLaw{T}}, d::BrokenPowerLaw)`
- - `minimum(d::BrokenPowerLaw)`
- - `maximum(d::BrokenPowerLaw)`
- - `partype(d::BrokenPowerLaw)`
- - `mean(d::BrokenPowerLaw)`
- - `median(d::BrokenPowerLaw)`
- - `pdf(d::BrokenPowerLaw,x::Real)`
- - `logpdf(d::BrokenPowerLaw,x::Real)`
- - `cdf(d::BrokenPowerLaw,x::Real)`
- - `ccdf(d::BrokenPowerLaw,x::Real)`
- - `quantile(d::BrokenPowerLaw{S},x::T) where {S,T<:Real}`
- - `quantile!(result::AbstractArray,d::BrokenPowerLaw{S},x::AbstractArray{T}) where {S,T<:Real}`
- - `quantile(d::BrokenPowerLaw{T},x::AbstractArray{S})`
- - `cquantile(d::BrokenPowerLaw{S},x::T) where {S,T<:Real}`
- - `rand(rng::AbstractRNG, d::BrokenPowerLaw,s...)` 
- - Other methods from `Distributions.jl` should also work because `LogNormalBPL <: AbstractIMF <: Distributions.ContinuousUnivariateDistribution`. For example, `rand!(rng::AbstractRNG, d::BrokenPowerLaw, x::AbstractArray)`.
+ - `Base.convert(::Type{LogNormalBPL{T}}, d::LogNormalBPL)`
+ - `minimum(d::LogNormalBPL)`
+ - `maximum(d::LogNormalBPL)`
+ - `partype(d::LogNormalBPL)`
+ - `mean(d::LogNormalBPL)`
+ - `median(d::LogNormalBPL)`
+ - `pdf(d::LogNormalBPL,x::Real)`
+ - `logpdf(d::LogNormalBPL,x::Real)`
+ - `cdf(d::LogNormalBPL,x::Real)`
+ - `ccdf(d::LogNormalBPL,x::Real)`
+ - `quantile(d::LogNormalBPL{S},x::T) where {S,T<:Real}`
+ - `quantile!(result::AbstractArray,d::LogNormalBPL{S},x::AbstractArray{T}) where {S,T<:Real}`
+ - `quantile(d::LogNormalBPL{T},x::AbstractArray{S})`
+ - `cquantile(d::LogNormalBPL{S},x::T) where {S,T<:Real}`
+ - `rand(rng::AbstractRNG, d::LogNormalBPL,s...)` 
+ - Other methods from `Distributions.jl` should also work because `LogNormalBPL <: AbstractIMF <: Distributions.ContinuousUnivariateDistribution`. For example, `rand!(rng::AbstractRNG, d::LogNormalBPL, x::AbstractArray)`.
 """
 struct LogNormalBPL{T} <: AbstractIMF
     μ::T

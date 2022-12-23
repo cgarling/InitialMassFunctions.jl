@@ -51,6 +51,9 @@ that is defined piecewise with different normalizations `A` and power law slopes
 # Examples
 `BrokenPowerLaw([1.35,2.35],[0.08,1.0,Inf])` will instantiate a broken power law defined from a minimum mass of `0.08` to a maximum mass of `Inf` with a single switch in `α` at `m=1.0`. From `0.08 ≤ m ≤ 1.0`, `α = 1.35` and from `1.0 ≤ m ≤ Inf`, `α = 2.35`.
 
+# Notes
+There is some setup necessary for `quantile` and other derived methods, so it is more efficient to call these methods directly with an array via the call signature `quantile(d::BrokenPowerLaw{T}, x::AbstractArray{S})` rather than broadcasting over `x`. This behavior is now deprecated for `quantile(d::Distributions.UnivariateDistribution, X::AbstractArray)` in Distributions.jl.
+
 # Methods
  - `Base.convert(::Type{BrokenPowerLaw{T}}, d::BrokenPowerLaw)`
  - `minimum(d::BrokenPowerLaw)`
