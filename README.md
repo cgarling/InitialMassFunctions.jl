@@ -11,11 +11,11 @@ Stellar initial mass functions describe the distribution of initial masses that 
 
 Published IMFs we include are
 ```julia
-Salpeter1955(mmin::Real=0.4,mmax::Real=Inf)
-Chabrier2001BPL(mmin::Real=0.08,mmax::Real=Inf)
-Chabrier2001LogNormal(mmin::Real=0.08,mmax::Real=Inf)
-Chabrier2003(mmin::Real=0.08,mmax::Real=Inf)
-Kroupa2001(mmin::Real=0.08,mmax::Real=Inf)
+Salpeter1955(mmin::Real=0.4, mmax::Real=Inf)
+Chabrier2001BPL(mmin::Real=0.08, mmax::Real=Inf)
+Chabrier2001LogNormal(mmin::Real=0.08 ,mmax::Real=Inf)
+Chabrier2003(mmin::Real=0.08, mmax::Real=Inf)
+Kroupa2001(mmin::Real=0.08, mmax::Real=Inf)
 ```
 
 These all return subtypes of [`Distributions.ContinuousUnivariateDistribution`](https://juliastats.org/Distributions.jl/latest/univariate/#univariates) and have many of the typical methods from [`Distributions.jl`](https://github.com/JuliaStats/Distributions.jl) defined for them. These include
