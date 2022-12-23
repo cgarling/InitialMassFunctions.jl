@@ -2,14 +2,14 @@
 # Power Law
 ###########################################################################################
 """
-    PowerLaw(α::Real, mmin::Real, mmax::Real)
+    PowerLawIMF(α::Real, mmin::Real, mmax::Real)
 Descibes a single power-law IMF with probability distribution
 ```math
     \\frac{dn(m)}{dm} = A \\times m^{-\\alpha}
 ```
 truncated such that the probability distribution is 0 below `mmin` and above `mmax`. `A` is a normalization constant such that the distribution integrates to 1 from the minimum valid stellar mass `mmin` to the maximum valid stellar mass `mmax`. This is simply `Distributions.truncated(Distributions.Pareto(α-1,mmin);upper=mmax)`. See the documentation for [`Pareto`](https://juliastats.org/Distributions.jl/latest/univariate/#Distributions.Pareto) and [`truncated`](https://juliastats.org/Distributions.jl/latest/truncate/#Distributions.truncated).
 """
-PowerLaw(α::Real, mmin::Real, mmax::Real) = truncated(Pareto(α-1, mmin); upper=mmax)
+PowerLawIMF(α::Real, mmin::Real, mmax::Real) = truncated(Pareto(α-1, mmin); upper=mmax)
 function mean(d::Truncated{Pareto{T}, Continuous, T}) where T
     mmin, mmax = extrema(d)
     α, θ = params( d.untruncated )
@@ -19,9 +19,9 @@ function mean(d::Truncated{Pareto{T}, Continuous, T}) where T
 end
 """
     Salpeter1955(mmin::Real=0.4, mmax::Real=Inf)
-The IMF model of [Salpeter 1955](https://ui.adsabs.harvard.edu/abs/1955ApJ...121..161S/abstract), a [`PowerLaw`](@ref) with `α=2.35`.
+The IMF model of [Salpeter 1955](https://ui.adsabs.harvard.edu/abs/1955ApJ...121..161S/abstract), a [`PowerLawIMF`](@ref) with `α=2.35`.
 """
-Salpeter1955(mmin::T, mmax::T) where T<:Real= PowerLaw(T(2.35), mmin, mmax)
+Salpeter1955(mmin::T, mmax::T) where T<:Real= PowerLawIMF(T(2.35), mmin, mmax)
 Salpeter1955(mmin::Real=0.4, mmax::Real=Inf) = Salpeter1955(promote(mmin, mmax)...)
 
 ###########################################################################################
