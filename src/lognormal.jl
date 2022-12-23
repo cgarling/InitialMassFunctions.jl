@@ -1,5 +1,5 @@
 """
-    LogNormalIMF(μ::Real,σ::Real,mmin::Real,mmax::Real)
+    LogNormalIMF(μ::Real, σ::Real, mmin::Real, mmax::Real)
 
 Describes a lognormal IMF with probability distribution
 
@@ -13,24 +13,31 @@ truncated such that the probability distribution is 0 below `mmin` and above `mm
  - `μ`; see [Distributions.LogNormal](https://juliastats.org/Distributions.jl/stable/univariate/#Distributions.LogNormal)
  - `σ`; see [Distributions.LogNormal](https://juliastats.org/Distributions.jl/stable/univariate/#Distributions.LogNormal)
 """
-LogNormalIMF(μ::Real,σ::Real,mmin::Real,mmax::Real) = truncated(LogNormal(μ,σ);lower=mmin,upper=mmax)
-
+LogNormalIMF(μ::Real, σ::Real, mmin::Real, mmax::Real) = truncated(LogNormal(μ,σ);lower=mmin,upper=mmax)
+function mean(d::Truncated{LogNormal{T}, Continuous, T}) where T
+    mmin, mmax = extrema(d)
+    μ, σ = params( d.untruncated )
+    # return (α * θ^α / (1-α) / d.ucdf) * (mmax^(1-α) - mmin^(1-α))
+    return -exp(μ + σ^2/2) / 2 / (d.ucdf - d.lcdf) *
+        ( erf( (μ + σ^2 - log(mmax)) / (sqrt(2)*σ) ) - erf( (μ + σ^2 - log(mmin)) / (sqrt(2)*σ) ) )
+end
 """
-    Chabrier2001LogNormal(mmin::Real=0.08,mmax::Real=Inf)
+    Chabrier2001LogNormal(mmin::Real=0.08, mmax::Real=Inf)
 
 Function to instantiate the [Chabrier 2001](https://ui.adsabs.harvard.edu/abs/2001ApJ...554.1274C/abstract) lognormal IMF. Returns an instance of `Distributions.Truncated(Distributions.LogNormal)`. See also [`Chabrier2003`](@ref) which has the same lognormal form for masses below one solar mass, but a power law extension at higher masses. 
 """
-Chabrier2001LogNormal(mmin::Real=0.08,mmax::Real=Inf) = LogNormalIMF(log(0.1),0.627*log(10),mmin,mmax)
+Chabrier2001LogNormal(mmin::Real=0.08, mmax::Real=Inf) = LogNormalIMF(log(0.1), 0.627*log(10), mmin, mmax)
 
 """
-    lognormal_integral(μ,σ,b1,b2)
+    lognormal_integral(μ, σ, b1, b2)
 
 Definite integral of the lognormal probability distribution from `b1` to `b2`.
 ```math
 \\int_{b1}^{b2} \\, \\frac{A}{x} \\, \\exp \\left[ \\frac{ -\\left( \\log(x) - \\mu \\right)^2}{2\\sigma^2} \\right] \\, dx
 ```
 """
-lognormal_integral(A::T,μ::T,σ::T,b1::T,b2::T) where {T<:Number} = A * sqrt(T(π)/2) * σ * (erf( (μ-log(b1))/(sqrt(T(2))*σ)) - erf( (μ-log(b2))/(sqrt(T(2))*σ)))
+lognormal_integral(A::T,μ::T,σ::T,b1::T,b2::T) where {T<:Number} =
+    A * sqrt(T(π)/2) * σ * (erf( (μ-log(b1))/(sqrt(T(2))*σ)) - erf( (μ-log(b2))/(sqrt(T(2))*σ)))
 lognormal_integral(A::Number,μ::Number,σ::Number,b1::Number,b2::Number) = lognormal_integral(promote(A,μ,σ,b1,b2)...)
 # lognormal_integral(A,μ,σ,b1,b2) = A * sqrt(π/2) * σ * (erf( (μ-log(b1))/(sqrt(2)*σ)) - erf( (μ-log(b2))/(sqrt(2)*σ)))
 """
@@ -300,13 +307,13 @@ const chabrier2003_breakpoints = [0.0,1.0,Inf]
 const chabrier2003_μ = log(0.079)#*log(10)
 const chabrier2003_σ = 0.69*log(10)
 """
-    Chabrier2003LogNormal(mmin::Real=0.08,mmax::Real=Inf)
+    Chabrier2003LogNormal(mmin::Real=0.08, mmax::Real=Inf)
 
 Function to instantiate the [Chabrier 2003](https://ui.adsabs.harvard.edu/abs/2003PASP..115..763C/abstract) lognormal IMF, with a power-law extension for masses greater than one solar mass. This will return an instance of [`LogNormalBPL`](@ref). See also [`Chabrier2001LogNormal`](@ref) which has the same lognormal form, but without a high-mass power law extension.
 """
-function Chabrier2003(mmin::T=0.08,mmax::T=Inf) where {T<:Real}
+function Chabrier2003(mmin::T=0.08, mmax::T=Inf) where {T<:Real}
     @assert mmin>0
-    mmin>1.0 && return PowerLawIMF(2.3,mmin,mmax) # if mmin>1, we are ONLY using the power law extension, so return power law IMF.
+    mmin>1.0 && return PowerLaw(2.3,mmin,mmax) # if mmin>1, we are ONLY using the power law extension, so return power law IMF.
     mmax<1.0 && return truncated(LogNormal(chabrier2003_μ,chabrier2003_σ);lower=mmin,upper=mmax) # if mmax<1, we are ONLY using the lognormal component, so return lognormal IMF.
     idx1 = findfirst(>(mmin),chabrier2003_breakpoints)-1
     idx2 = findfirst(>=(mmax),chabrier2003_breakpoints)
