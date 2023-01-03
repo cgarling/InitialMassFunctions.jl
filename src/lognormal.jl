@@ -68,6 +68,7 @@ There is some setup necessary for `quantile` and other derived methods, so it is
  - `minimum(d::LogNormalBPL)`
  - `maximum(d::LogNormalBPL)`
  - `partype(d::LogNormalBPL)`
+ - `eltype(d::LogNormalBPL)`
  - `mean(d::LogNormalBPL)`
  - `median(d::LogNormalBPL)`
  - `pdf(d::LogNormalBPL,x::Real)`
@@ -131,6 +132,7 @@ params(d::LogNormalBPL) = d.μ,d.σ,d.A,d.α,d.breakpoints
 minimum(d::LogNormalBPL) = minimum(d.breakpoints)
 maximum(d::LogNormalBPL) = maximum(d.breakpoints)
 partype(d::LogNormalBPL{T}) where T = T
+eltype(d::LogNormalBPL{T}) where T = T
 
 #### Statistics
 function mean(d::LogNormalBPL{T}) where T

@@ -65,6 +65,7 @@ There is some setup necessary for `quantile` and other derived methods, so it is
  - `minimum(d::BrokenPowerLaw)`
  - `maximum(d::BrokenPowerLaw)`
  - `partype(d::BrokenPowerLaw)`
+ - `eltype(d::BrokenPowerLaw)`
  - `mean(d::BrokenPowerLaw)`
  - `median(d::BrokenPowerLaw)`
  - `var(d::BrokenPowerLaw)`, may not function correctly for large `mmax`
@@ -152,6 +153,7 @@ params(d::BrokenPowerLaw) = d.A, d.α, d.breakpoints
 minimum(d::BrokenPowerLaw) = minimum(d.breakpoints)
 maximum(d::BrokenPowerLaw) = maximum(d.breakpoints)
 partype(d::BrokenPowerLaw{T}) where T = T
+eltype(d::BrokenPowerLaw{T}) where T = T
 
 #### Statistics
 function mean(d::BrokenPowerLaw)
