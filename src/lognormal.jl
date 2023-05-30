@@ -24,7 +24,7 @@ end
 """
     Chabrier2001LogNormal(mmin::Real=0.08, mmax::Real=Inf)
 
-Function to instantiate the [Chabrier 2001](https://ui.adsabs.harvard.edu/abs/2001ApJ...554.1274C/abstract) lognormal IMF. Returns an instance of `Distributions.Truncated(Distributions.LogNormal)`. See also [`Chabrier2003`](@ref) which has the same lognormal form for masses below one solar mass, but a power law extension at higher masses. 
+Function to instantiate the [Chabrier 2001](https://ui.adsabs.harvard.edu/abs/2001ApJ...554.1274C/abstract) lognormal IMF for single stars. Returns an instance of `Distributions.Truncated(Distributions.LogNormal)`. See also [`Chabrier2003`](@ref) which has the same lognormal form for masses below one solar mass, but a power law extension at higher masses. 
 """
 Chabrier2001LogNormal(mmin::Real=0.08, mmax::Real=Inf) = LogNormalIMF(log(0.1), 0.627*log(10), mmin, mmax)
 
@@ -287,9 +287,9 @@ const chabrier2003_breakpoints = [0.0,1.0,Inf]
 const chabrier2003_μ = log(0.079)#*log(10)
 const chabrier2003_σ = 0.69*log(10)
 """
-    Chabrier2003LogNormal(mmin::Real=0.08, mmax::Real=Inf)
+    Chabrier2003(mmin::Real=0.08, mmax::Real=Inf)
 
-Function to instantiate the [Chabrier 2003](https://ui.adsabs.harvard.edu/abs/2003PASP..115..763C/abstract) lognormal IMF, with a power-law extension for masses greater than one solar mass. This will return an instance of [`LogNormalBPL`](@ref). See also [`Chabrier2001LogNormal`](@ref) which has the same lognormal form, but without a high-mass power law extension.
+Function to instantiate the [Chabrier 2003](https://ui.adsabs.harvard.edu/abs/2003PASP..115..763C/abstract) lognormal IMF, with a power-law extension for masses greater than one solar mass. This IMF is valid for single stars and takes parameters from the "Disk and Young Clusters" column of Table 2 in the above paper. This will return an instance of [`LogNormalBPL`](@ref). See also [`Chabrier2001LogNormal`](@ref) which has the same lognormal form, but without a high-mass power law extension.
 """
 function Chabrier2003(mmin::T=0.08, mmax::T=Inf) where T <: Real
     @assert mmin > 0

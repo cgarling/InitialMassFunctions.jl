@@ -274,7 +274,7 @@ const kroupa2001_breakpoints = [0.0, 0.08, 0.50, Inf]
 """
     Kroupa2001(mmin::Real=0.08, mmax::Real=Inf)
 
-Function to instantiate a [`BrokenPowerLaw`](@ref) IMF with the parameters from Equation 2 of [Kroupa 2001](https://ui.adsabs.harvard.edu/abs/2001MNRAS.322..231K/abstract). This is equivalent to the relation given in [Kroupa 2002](https://ui.adsabs.harvard.edu/abs/2002Sci...295...82K/abstract).
+Function to instantiate a [`BrokenPowerLaw`](@ref) IMF for single stars with the parameters from Equation 2 of [Kroupa 2001](https://ui.adsabs.harvard.edu/abs/2001MNRAS.322..231K/abstract). This is equivalent to the relation given in [Kroupa 2002](https://ui.adsabs.harvard.edu/abs/2002Sci...295...82K/abstract).
 """
 function Kroupa2001(mmin::T=0.08, mmax::T=Inf) where T <: Real
     @assert mmin > zero(T)
@@ -293,7 +293,7 @@ const chabrier2001bpl_breakpoints = [0.00, 1.0, Inf]
 """
     Chabrier2001BPL(mmin::T=0.08, mmax::T=Inf)
 
-Function to instantiate a [`BrokenPowerLaw`](@ref) IMF with the parameters from the first column of Table 1 in [Chabrier 2001](https://ui.adsabs.harvard.edu/abs/2001ApJ...554.1274C/abstract).
+Function to instantiate a [`BrokenPowerLaw`](@ref) IMF for single stars with the parameters from the first column of Table 1 in [Chabrier 2001](https://ui.adsabs.harvard.edu/abs/2001ApJ...554.1274C/abstract).
 """
 function Chabrier2001BPL(mmin::T=0.08, mmax::T=Inf) where {T<:Real}
     @assert mmin > 0
