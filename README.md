@@ -15,6 +15,7 @@ Salpeter1955(mmin::Real=0.4, mmax::Real=Inf)
 Chabrier2001BPL(mmin::Real=0.08, mmax::Real=Inf)
 Chabrier2001LogNormal(mmin::Real=0.08, mmax::Real=Inf)
 Chabrier2003(mmin::Real=0.08, mmax::Real=Inf)
+Chabrier2003System(mmin::Real=0.08, mmax::Real=Inf)
 Kroupa2001(mmin::Real=0.08, mmax::Real=Inf)
 ```
 
