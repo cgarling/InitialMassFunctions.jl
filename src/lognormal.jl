@@ -289,7 +289,7 @@ const chabrier2003_σ = 0.69*log(10)
 """
     Chabrier2003(mmin::Real=0.08, mmax::Real=Inf)
 
-Function to instantiate the [Chabrier 2003](https://ui.adsabs.harvard.edu/abs/2003PASP..115..763C/abstract) lognormal IMF, with a power-law extension for masses greater than one solar mass. This IMF is valid for single stars and takes parameters from the "Disk and Young Clusters" column of Table 2 in the above paper. This will return an instance of [`LogNormalBPL`](@ref). See also [`Chabrier2001LogNormal`](@ref) which has the same lognormal form, but without a high-mass power law extension.
+Function to instantiate the [Chabrier 2003](https://ui.adsabs.harvard.edu/abs/2003PASP..115..763C/abstract) IMF for single stars. This is a lognormal IMF with a power-law extension for masses greater than one solar mass. This IMF is valid for single stars and takes parameters from the "Disk and Young Clusters" column of Table 2 in the above paper. This will return an instance of [`LogNormalBPL`](@ref). See also [`Chabrier2003System`](@ref) which implements the IMF for general stellar systems with multiplicity from this same paper, and [`Chabrier2001LogNormal`](@ref) which has the same lognormal form as this model but without a high-mass power law extension.
 """
 function Chabrier2003(mmin::T=0.08, mmax::T=Inf) where T <: Real
     @assert mmin > 0
@@ -303,3 +303,23 @@ function Chabrier2003(mmin::T=0.08, mmax::T=Inf) where T <: Real
     LogNormalBPL(convert(T,chabrier2003_μ), convert(T,chabrier2003_σ), convert(Vector{T},chabrier2003_α[idx1:(idx2-2)]), bp)
 end
 Chabrier2003(mmin::Real, mmax::Real) = Chabrier2003(promote(mmin,mmax)...)
+#######################################################
+const chabrier2003_system_μ = log(0.22)
+const chabrier2003_system_σ = 0.57*log(10)
+"""
+    Chabrier2003System(mmin::Real=0.08, mmax::Real=Inf)
+
+Function to instantiate the [Chabrier 2003](https://ui.adsabs.harvard.edu/abs/2003PASP..115..763C/abstract) system IMF. This is a lognormal IMF with a power-law extension for masses greater than one solar mass. This IMF is valid for general star systems with stellar multiplicity (e.g., binaries) and differs from the typical single-star models. Parameters for this distribution are taken from Equation 18 in the above paper. This will return an instance of [`LogNormalBPL`](@ref). See also [`Chabrier2003`](@ref) for the single star IMF.
+"""
+function Chabrier2003System(mmin::T=0.08, mmax::T=Inf) where T <: Real
+    @assert mmin > 0
+    mmin > one(T) && return PowerLaw(2.3,mmin,mmax) # if mmin>1, we are ONLY using the power law extension, so return power law IMF.
+    mmax < one(T) && return truncated(LogNormal(chabrier2003_system_μ,chabrier2003_system_σ);lower=mmin,upper=mmax) # if mmax<1, we are ONLY using the lognormal component, so return lognormal IMF.
+    idx1 = findfirst(>(mmin), chabrier2003_breakpoints)-1
+    idx2 = findfirst(>=(mmax), chabrier2003_breakpoints)
+    bp = convert(Vector{T}, chabrier2003_breakpoints[idx1:idx2])
+    bp[1] = mmin
+    bp[end] = mmax
+    LogNormalBPL(convert(T,chabrier2003_system_μ), convert(T,chabrier2003_system_σ), convert(Vector{T},chabrier2003_α[idx1:(idx2-2)]), bp)
+end
+Chabrier2003System(mmin::Real, mmax::Real) = Chabrier2003System(promote(mmin,mmax)...)

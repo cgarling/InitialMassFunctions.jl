@@ -7,6 +7,7 @@ Chabrier2001BPL
 Kroupa2001
 Chabrier2001LogNormal
 Chabrier2003
+Chabrier2003System
 ```
 
 We also provide a constructor for a single-power-law IMF,

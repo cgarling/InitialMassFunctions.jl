@@ -251,4 +251,8 @@ end
         d = Chabrier2003(0.08,100.0)
         test_lognormalbpl(d)
     end
+    @testset "Chabrier2003System" begin
+        d = Chabrier2003System(0.08,100.0)
+        test_lognormalbpl(d)
+    end
 end
