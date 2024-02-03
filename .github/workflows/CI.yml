@@ -53,7 +53,6 @@ jobs:
       - uses: codecov/codecov-action@v3
         with:
           files: lcov.info
-	  
   Aqua:
     name: Aqua Tests
     runs-on: ubuntu-latest
@@ -65,7 +64,6 @@ jobs:
         - uses: julia-actions/julia-buildpkg@v1
         - run: julia --color=yes -e 'using Pkg; Pkg.add("Aqua")'
         - run: julia --project=@. --color=yes -e 'using Aqua, InitialMassFunctions; Aqua.test_all(InitialMassFunctions; ambiguities=false, piracies=(treat_as_own=[mean],))'
-	  
   docs:
     name: Documentation
     runs-on: ubuntu-latest
