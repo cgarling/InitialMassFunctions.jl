@@ -5,7 +5,7 @@ InitialMassFunctions.jl
 [![](https://img.shields.io/badge/docs-stable-blue.svg)](https://cgarling.github.io/InitialMassFunctions.jl/stable/)
 [![](https://img.shields.io/badge/docs-dev-blue.svg)](https://cgarling.github.io/InitialMassFunctions.jl/dev/)
 [![codecov](https://codecov.io/gh/cgarling/InitialMassFunctions.jl/branch/main/graph/badge.svg?token=XY3O7IQPZH)](https://codecov.io/gh/cgarling/InitialMassFunctions.jl)
-
+[![Aqua QA](https://raw.githubusercontent.com/JuliaTesting/Aqua.jl/master/badge.svg)](https://github.com/JuliaTesting/Aqua.jl)
 
 Stellar initial mass functions describe the distribution of initial masses that stars are born with. This package aims to implement and provide interfaces for working with initial mass functions, including but not limited to evaluating and sampling from published distributions. See the linked documentation above for more details.
 
