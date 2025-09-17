@@ -72,6 +72,20 @@ end
 
 # include("single_powerlaw.jl")
 
+@testset "PowerLawIMF" begin
+    for T in (Float32, Float64)
+        d = Salpeter1955(T(0.4), T(Inf))
+        @test partype(d) == T
+        for f in (pdf, logpdf, cdf, ccdf, logcdf, quantile, cquantile)
+            @testset "$(f)" begin
+                @test f(d, T(0.6)) isa T broken=(f == cquantile && T == Float32)
+            end
+        end
+        @test mean(d) isa T
+        @test median(d) isa T
+    end
+end
+
 @testset "BrokenPowerLaw" begin
     @testset "Float64" begin
         d = BrokenPowerLaw([1.3,2.35],[0.08,1.0,100.0])

@@ -11,7 +11,7 @@ truncated such that the probability distribution is 0 below `mmin` and above `mm
 """
 PowerLawIMF(α::Real, mmin::Real, mmax::Real) = truncated(Pareto(α-1, mmin); upper=mmax)
 function mean(d::Truncated{Pareto{T}, Continuous, T}) where T
-    mmin, mmax = extrema(d)
+    mmin::T, mmax::T = extrema(d)
     α, θ = params( d.untruncated )
     return (α * θ^α / (1-α) / d.ucdf) * (mmax^(1-α) - mmin^(1-α))
 end
