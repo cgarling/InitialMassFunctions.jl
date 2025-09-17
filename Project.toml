@@ -1,7 +1,7 @@
 name = "InitialMassFunctions"
 uuid = "e9251ff4-c148-4db3-bf46-89407750fae0"
 authors = ["cgarling <chris.t.garling@gmail.com>"]
-version = "0.1.4"
+version = "0.1.5"
 
 [deps]
 Distributions = "31c24e10-a181-5473-b8eb-7969acd0382f"
