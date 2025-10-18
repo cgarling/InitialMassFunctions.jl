@@ -27,7 +27,7 @@ end
 Function to instantiate the [Chabrier 2001](https://ui.adsabs.harvard.edu/abs/2001ApJ...554.1274C/abstract) lognormal IMF for single stars. Returns an instance of `Distributions.Truncated(Distributions.LogNormal)`. See also [`Chabrier2003`](@ref) which has the same lognormal form for masses below one solar mass, but a power law extension at higher masses. 
 """
 Chabrier2001LogNormal(mmin::T, mmax::T) where {T <: Real} = LogNormalIMF(log(T(1//10)), T(627//1000)*logten, mmin, mmax)
-Chabrier2001LogNormal(mmin::Real=0.08, mmax::Real=Inf) = LogNormalIMF(promote.(mmin, mmax)...)
+Chabrier2001LogNormal(mmin::Real=0.08, mmax::Real=Inf) = Chabrier2001LogNormal(promote(mmin, mmax)...)
 
 """
     lognormal_integral(μ, σ, b1, b2)
