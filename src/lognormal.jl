@@ -284,7 +284,6 @@ Function to instantiate the [Chabrier 2003](https://ui.adsabs.harvard.edu/abs/20
 function Chabrier2003(mmin::T=0.08, mmax::T=Inf) where T <: Real
     @assert mmin > 0
     α = SVector{1,T}(2.3)
-    # breakpoints = SVector{3,T}(0.0, 1.0, Inf)
     μ = log(T(79//1000)) #*log(10)
     σ = T(69//100) * logten
     mmin > one(T) && return PowerLaw(T(2.3), mmin, mmax) # if mmin>1, we are ONLY using the power law extension, so return power law IMF.
@@ -304,7 +303,6 @@ Function to instantiate the [Chabrier 2003](https://ui.adsabs.harvard.edu/abs/20
 function Chabrier2003System(mmin::T=0.08, mmax::T=Inf) where T <: Real
     @assert mmin > 0
     α = SVector{1,T}(2.3)
-    breakpoints = SVector{3,T}(0.0, 1.0, Inf)
     μ = log(T(22//100))
     σ = T(57//100) * logten
     mmin > one(T) && return PowerLaw(T(2.3), mmin, mmax) # if mmin>1, we are ONLY using the power law extension, so return power law IMF.
