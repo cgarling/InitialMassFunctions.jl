@@ -1,8 +1,9 @@
 module InitialMassFunctions
 
 import Distributions: ContinuousUnivariateDistribution, Pareto, LogNormal, truncated, Truncated, mean, median, var, skewness, kurtosis, pdf, logpdf, cdf, ccdf, minimum, maximum, partype, quantile, cquantile, sampler, rand, Sampleable, Univariate, Continuous, eltype, params
-import Random: AbstractRNG
-import SpecialFunctions: erf, erfinv
+using IrrationalConstants: sqrt2, logten 
+using Random: AbstractRNG
+using SpecialFunctions: erf, erfinv
 
 """ Abstract type for IMFs; a subtype of `Distributions.ContinuousUnivariateDistribution`, as all IMF models can be described as continuous, univariate PDFs. """
 abstract type AbstractIMF <: ContinuousUnivariateDistribution end

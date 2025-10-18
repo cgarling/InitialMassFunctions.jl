@@ -13,20 +13,21 @@ truncated such that the probability distribution is 0 below `mmin` and above `mm
  - `μ`; see [Distributions.LogNormal](https://juliastats.org/Distributions.jl/stable/univariate/#Distributions.LogNormal)
  - `σ`; see [Distributions.LogNormal](https://juliastats.org/Distributions.jl/stable/univariate/#Distributions.LogNormal)
 """
-LogNormalIMF(μ::Real, σ::Real, mmin::Real, mmax::Real) = truncated(LogNormal(μ,σ);lower=mmin,upper=mmax)
+LogNormalIMF(μ::Real, σ::Real, mmin::Real, mmax::Real) = truncated(LogNormal(μ, σ); lower=mmin, upper=mmax)
 function mean(d::Truncated{LogNormal{T}, Continuous, T}) where T
-    mmin, mmax = extrema(d)
-    μ, σ = params( d.untruncated )
-    # return (α * θ^α / (1-α) / d.ucdf) * (mmax^(1-α) - mmin^(1-α))
+    mmin::T, mmax::T = extrema(d)
+    μ, σ = params(d.untruncated)
     return -exp(μ + σ^2/2) / 2 / (d.ucdf - d.lcdf) *
-        ( erf( (μ + σ^2 - log(mmax)) / (sqrt(2)*σ) ) - erf( (μ + σ^2 - log(mmin)) / (sqrt(2)*σ) ) )
+        ( erf( (μ + σ^2 - log(mmax)) / (sqrt2*σ) ) - erf( (μ + σ^2 - log(mmin)) / (sqrt2*σ) ) )
 end
+
 """
     Chabrier2001LogNormal(mmin::Real=0.08, mmax::Real=Inf)
 
 Function to instantiate the [Chabrier 2001](https://ui.adsabs.harvard.edu/abs/2001ApJ...554.1274C/abstract) lognormal IMF for single stars. Returns an instance of `Distributions.Truncated(Distributions.LogNormal)`. See also [`Chabrier2003`](@ref) which has the same lognormal form for masses below one solar mass, but a power law extension at higher masses. 
 """
-Chabrier2001LogNormal(mmin::Real=0.08, mmax::Real=Inf) = LogNormalIMF(log(0.1), 0.627*log(10), mmin, mmax)
+Chabrier2001LogNormal(mmin::T, mmax::T) where {T <: Real} = LogNormalIMF(log(T(1//10)), T(627//1000)*logten, mmin, mmax)
+Chabrier2001LogNormal(mmin::Real=0.08, mmax::Real=Inf) = LogNormalIMF(promote.(mmin, mmax)...)
 
 """
     lognormal_integral(μ, σ, b1, b2)

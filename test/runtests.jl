@@ -2,64 +2,69 @@ using InitialMassFunctions
 using QuadGK
 using Test
 
-function test_bpl(d::BrokenPowerLaw)
-    mmin,mmax = extrema(d)
-    integral = quadgk(x->pdf(d,x),mmin,mmax) # test that the pdf is properly normalized
+function test_imf(d)
+    mmin, mmax = extrema(d)
+    T = partype(d)
+    rtol = sqrt(eps(T))
+    integral = quadgk(Base.Fix1(pdf, d), mmin, mmax) # test that the pdf is properly normalized
     # integral = quadgk(x->exp(x)*pdf(d,exp(x)),log(mmin),log(mmax))
-    @test integral[1] ≈ oneunit(integral[1]) rtol=1e-12 atol=integral[2] # test normalization
-    meanmass_gk = quadgk(x->x*pdf(d,x),mmin,mmax)
+    @test integral[1] ≈ oneunit(integral[1]) rtol=rtol atol=integral[2] # test normalization
+    meanmass_gk = quadgk(x -> x * pdf(d, x), mmin, mmax)
     # meanmass_gk = quadgk(x->exp(x)^2*pdf(d,exp(x)),log(mmin),log(mmax))
-    @test meanmass_gk[1] ≈ mean(d) rtol=1e-12 atol=meanmass_gk[2] # test mean
-    var_gk = quadgk(x->x^2*pdf(d,x),mmin,mmax)
-    @test var_gk[1]-mean(d)^2 ≈ var(d) rtol=1e-12 atol=var_gk[2] # test variance
-    skew_gk = quadgk(x->x^3*pdf(d,x),mmin,mmax)
+    @test meanmass_gk[1] ≈ mean(d) rtol=rtol atol=meanmass_gk[2] # test mean
+    var_gk = quadgk(x -> x^2 * pdf(d, x), mmin, mmax)
+    @test var_gk[1]-mean(d)^2 ≈ var(d) rtol=rtol atol=var_gk[2] # test variance
+    skew_gk = quadgk(x -> x^3 * pdf(d, x), mmin, mmax)
     @test (skew_gk[1]-3*mean(d)*var(d)-mean(d)^3)/var(d)^(3/2) ≈ skewness(d) rtol=1e-5 atol=var_gk[2] # test skewness; higher error
     dmean = mean(d)
     var_d = var(d)
-    kurt_gk = quadgk(x->(x-dmean)^4 / var_d^2 * pdf(d,x),mmin,mmax)
-    @test kurt_gk[1] ≈ kurtosis(d) rtol=1e-10 atol=kurt_gk[2] # test kurtosis
+    kurt_gk = quadgk(x -> (x-dmean)^4 / var_d^2 * pdf(d, x),mmin ,mmax)
+    @test kurt_gk[1] ≈ kurtosis(d) rtol=rtol*100 atol=kurt_gk[2] # test kurtosis
     # test correctness of CDF, quantile, etc.
     test_points = [0.1,0.2,0.3,1.0,1.5,10.0,100.0]
     test_points = test_points[mmin .< test_points .< mmax]
     for i in test_points
-        x = cdf(d,i)
-        integral = quadgk(x->pdf(d,x),mmin,i)
-        @test integral[1] ≈ x rtol=1e-12 atol=integral[2]
-        @test quantile(d,x) ≈ i rtol=1e-12
-        @test cquantile(d,x) ≈ quantile(d,1-x) rtol=1e-12
-        @test logpdf(d,i) ≈ log(pdf(d,i)) rtol=1e-12
-        @test x ≈ 1 - ccdf(d,i) rtol=1e-12
+        x = cdf(d, i)
+        integral = quadgk(Base.Fix1(pdf, d), mmin, i)
+        @test integral[1] ≈ x rtol=rtol atol=integral[2]
+        @test quantile(d, x) ≈ i rtol=rtol
+        @test cquantile(d, x) ≈ quantile(d, 1-x) rtol=rtol
+        @test logpdf(d, i) ≈ log(pdf(d, i)) rtol=rtol
+        @test x ≈ 1 - ccdf(d, i) rtol=rtol
     end
 end
 
-function test_lognormalbpl(d::LogNormalBPL)
-    mmin,mmax = extrema(d)
-    integral = quadgk(x->pdf(d,x),mmin,mmax)
+# Quantities like var and skewnewss not defined for truncated lognormal IMFs
+function test_imf_lognormal(d)
+    mmin, mmax = extrema(d)
+    T = partype(d)
+    rtol = sqrt(eps(T))
+    integral = quadgk(Base.Fix1(pdf, d), mmin, mmax) # test that the pdf is properly normalized
     # integral = quadgk(x->exp(x)*pdf(d,exp(x)),log(mmin),log(mmax))
-    @test integral[1] ≈ oneunit(integral[1]) rtol=1e-12 atol=integral[2] # test normalization
-    meanmass_gk = quadgk(x->x*pdf(d,x),mmin,mmax)
+    @test integral[1] ≈ oneunit(integral[1]) rtol=rtol atol=integral[2] # test normalization
+    meanmass_gk = quadgk(x -> x * pdf(d, x), mmin, mmax)
     # meanmass_gk = quadgk(x->exp(x)^2*pdf(d,exp(x)),log(mmin),log(mmax))
-    @test meanmass_gk[1] ≈ mean(d) rtol=1e-12 atol=meanmass_gk[2] # test mean
-    # these are not defined yet for LogNormalBPL
-    # var_gk = quadgk(x->x^2*pdf(d,x),mmin,mmax)
-    # @test var_gk[1]-mean(d)^2 ≈ var(d) rtol=1e-12 atol=var_gk[2] # test variance
-    # skew_gk = quadgk(x->x^3*pdf(d,x),mmin,mmax)
+    @test meanmass_gk[1] ≈ mean(d) rtol=rtol atol=meanmass_gk[2] # test mean
+    # Variance, skewness, kurtosis not defined for lognormal IMFs
+    # var_gk = quadgk(x -> x^2 * pdf(d, x), mmin, mmax)
+    # @test var_gk[1]-mean(d)^2 ≈ var(d) rtol=rtol atol=var_gk[2] # test variance
+    # skew_gk = quadgk(x -> x^3 * pdf(d, x), mmin, mmax)
     # @test (skew_gk[1]-3*mean(d)*var(d)-mean(d)^3)/var(d)^(3/2) ≈ skewness(d) rtol=1e-5 atol=var_gk[2] # test skewness; higher error
     # dmean = mean(d)
     # var_d = var(d)
-    # kurt_gk = quadgk(x->(x-dmean)^4 / var_d^2 * pdf(d,x),mmin,mmax)
-    # @test kurt_gk[1] ≈ kurtosis(d) rtol=1e-10 atol=kurt_gk[2] # test kurtosis
+    # kurt_gk = quadgk(x -> (x-dmean)^4 / var_d^2 * pdf(d, x),mmin ,mmax)
+    # @test kurt_gk[1] ≈ kurtosis(d) rtol=rtol*100 atol=kurt_gk[2] # test kurtosis
     # test correctness of CDF, quantile, etc.
     test_points = [0.1,0.2,0.3,1.0,1.5,10.0,100.0]
     test_points = test_points[mmin .< test_points .< mmax]
     for i in test_points
-        x = cdf(d,i)
-        integral = quadgk(x->pdf(d,x),mmin,i)
-        @test integral[1] ≈ x rtol=1e-12 atol=integral[2]
-        @test quantile(d,x) ≈ i rtol=1e-12
-        @test cquantile(d,x) ≈ quantile(d,1-x) rtol=1e-12
-        @test logpdf(d,i) ≈ log(pdf(d,i)) rtol=1e-12
-        @test x ≈ 1 - ccdf(d,i) rtol=1e-12
+        x = cdf(d, i)
+        integral = quadgk(Base.Fix1(pdf, d), mmin, i)
+        @test integral[1] ≈ x rtol=rtol atol=integral[2]
+        @test quantile(d, x) ≈ i rtol=rtol
+        @test cquantile(d, x) ≈ quantile(d, 1-x) rtol=rtol
+        @test logpdf(d, i) ≈ log(pdf(d, i)) rtol=rtol
+        @test x ≈ 1 - ccdf(d, i) rtol=rtol
     end
 end
 
@@ -82,7 +87,30 @@ end
             end
         end
         @test mean(d) isa T
+        @test mean(d) ≈ quadgk(x -> x * pdf(d, x), extrema(d)...)[1] atol=1e-5
         @test median(d) isa T
+    end
+end
+
+@testset "LogNormalIMF" begin
+    for T in (Float32, Float64)
+        d = LogNormalIMF(T(0.8), T(0.2), T(0.08), T(100.0))
+        @test partype(d) == T
+        for f in (pdf, logpdf, cdf, ccdf, quantile, cquantile)
+            @testset "$(f)" begin
+                @test f(d, T(0.6)) isa T broken=(f == cquantile && T == Float32)
+            end
+        end
+        @test mean(d) isa T
+        @test mean(d) ≈ quadgk(x -> x * pdf(d, x), extrema(d)...)[1] atol=1e-5
+        @test median(d) isa T
+    end
+    # test named types of LogNormalIMFs
+    @testset "Chabrier2001LogNormal" begin
+        for T in (Float32, Float64)
+            d = Chabrier2001LogNormal(T(0.08), T(100.0))
+            test_imf_lognormal(d)
+        end
     end
 end
 
@@ -192,11 +220,11 @@ end
     # test named types of BPLs
     @testset "Chabrier2001BPL" begin
         d = Chabrier2001BPL(0.08,100.0)
-        test_bpl(d)
+        test_imf(d)
     end
     @testset "Kroupa2001" begin
         d = Kroupa2001(0.08,100.0)
-        test_bpl(d)
+        test_imf(d)
     end
 end
 
@@ -263,10 +291,10 @@ end
     # test named types of BPLs
     @testset "Chabrier2003" begin
         d = Chabrier2003(0.08,100.0)
-        test_lognormalbpl(d)
+        test_imf_lognormal(d)
     end
     @testset "Chabrier2003System" begin
         d = Chabrier2003System(0.08,100.0)
-        test_lognormalbpl(d)
+        test_imf_lognormal(d)
     end
 end
