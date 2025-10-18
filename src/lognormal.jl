@@ -147,7 +147,7 @@ function mean(d::LogNormalBPL{T}) where T
         breakpoints[i]^(2-α[i-1])) for i in 2:length(A))
     return m
 end
-median(d::LogNormalBPL{T}) where T = quantile(d, T(0.5)) # this is temporary
+median(d::LogNormalBPL{T}) where T = quantile(d, T(1//2)) # this is temporary
 # mode(d::BrokenPowerLaw) = d.breakpoints[argmin(d.α)] # this is not always correct
 
 #### Evaluation
@@ -175,11 +175,11 @@ function cdf(d::LogNormalBPL, x::Real)
     end
     μ, σ, A, α, breakpoints = params(d)
     idx = findfirst(>=(x), breakpoints)
-    result = lognormal_integral(A[1], μ, σ, breakpoints[1], min(x,breakpoints[2]))
-    idx > 2 && (result += sum(pl_integral(A[i],α[i-1],breakpoints[i],min(x,breakpoints[i+1])) for i in 2:idx-1))
+    result = lognormal_integral(A[1], μ, σ, breakpoints[1], min(x, breakpoints[2]))
+    idx > 2 && (result += sum(pl_integral(A[i], α[i-1], breakpoints[i], min(x, breakpoints[i+1])) for i in 2:idx-1))
     return result
 end
-ccdf(d::LogNormalBPL, x::Real) = one(partype(d)) - cdf(d,x)
+ccdf(d::LogNormalBPL, x::Real) = one(partype(d)) - cdf(d, x)
 function quantile(d::LogNormalBPL{S}, x::T) where {S, T <: Real}
     U = promote_type(S, T)
     x <= zero(T) && (return U(minimum(d)))
@@ -188,32 +188,32 @@ function quantile(d::LogNormalBPL{S}, x::T) where {S, T <: Real}
     nbreaks = length(A)
     # this works but the tuple interpolation is slow and allocating, so switch to a vector
     # integrals = cumsum( (lognormal_integral(A[1],μ,σ,breakpoints[1],breakpoints[2]), (pl_integral(A[i],α[i-1],breakpoints[i],breakpoints[i+1]) for i in 2:nbreaks)...) ) # calculate the cumulative integral up to each breakpoint
-    integrals = Array{U}(undef,nbreaks)
-    integrals[1] = lognormal_integral(A[1],μ,σ,breakpoints[1],breakpoints[2])
+    integrals = Array{U}(undef, nbreaks)
+    integrals[1] = lognormal_integral(A[1], μ, σ, breakpoints[1], breakpoints[2])
     for i in 2:nbreaks
-        integrals[i] = pl_integral(A[i],α[i-1],breakpoints[i],breakpoints[i+1])
+        integrals[i] = pl_integral(A[i], α[i-1], breakpoints[i], breakpoints[i+1])
     end
     cumsum!(integrals, integrals)
     idx = findfirst(>=(x), integrals)  # find the first breakpoint where the cumulative integral
     if idx == 1
         # return exp(μ - sqrt(2) * σ * erfinv( (A[1] * π * σ * erf((μ-log(breakpoints[1]))/(sqrt(2)*σ)) - sqrt(2π)*x) / (A[1]*π*σ) ))
-        return exp(μ - sqrt(U(2)) * σ * erfinv( (A[1] * π * σ * erf((μ-log(breakpoints[1]))/(sqrt(U(2))*σ)) - sqrt(U(2π))*x) / (A[1]*π*σ) ))
+        return exp(μ - sqrt2 * σ * erfinv( (A[1] * π * σ * erf((μ-log(breakpoints[1]))/(sqrt2*σ)) - sqrt2π*x) / (A[1]*π*σ) ))
     else
         x -= integrals[idx-1]   # If this is not the first breakpoint, then subtract off the cumulative integral and solve 
         a = one(S) - α[idx-1] # using power law CDF inversion
-        return (x*a/A[idx] + breakpoints[idx]^a)^inv(a)
+        return (x * a / A[idx] + breakpoints[idx]^a)^inv(a)
     end
 end
-function quantile!(result::AbstractArray{U}, d::LogNormalBPL{S}, x::AbstractArray{T}) where {S, T<:Real, U<:Real}
+function quantile!(result::AbstractArray{U}, d::LogNormalBPL{S}, x::AbstractArray{T}) where {S, T <: Real, U <: Real}
     @assert axes(result) == axes(x)
     μ, σ, A, α, breakpoints = params(d)
     nbreaks = length(A)
     # this works but the tuple interpolation is slow and allocating, so switch to a vector
     # integrals = cumsum( (lognormal_integral(A[1],μ,σ,breakpoints[1],breakpoints[2]), (pl_integral(A[i],α[i-1],breakpoints[i],breakpoints[i+1]) for i in 2:nbreaks)...) ) # calculate the cumulative integral up to each breakpoint
-    integrals = Array{eltype(result)}(undef,nbreaks)
-    integrals[1] = lognormal_integral(A[1],μ,σ,breakpoints[1],breakpoints[2])
+    integrals = Array{eltype(result)}(undef, nbreaks)
+    integrals[1] = lognormal_integral(A[1], μ, σ, breakpoints[1], breakpoints[2])
     @inbounds for i in 2:nbreaks
-        integrals[i] = pl_integral(A[i],α[i-1],breakpoints[i],breakpoints[i+1])
+        integrals[i] = pl_integral(A[i], α[i-1], breakpoints[i], breakpoints[i+1])
     end
     cumsum!(integrals, integrals)
     @inbounds for i in eachindex(x)
@@ -222,19 +222,18 @@ function quantile!(result::AbstractArray{U}, d::LogNormalBPL{S}, x::AbstractArra
         xi >= one(T) && (result[i]=maximum(d); continue)
         idx = findfirst(>=(xi), integrals)  # find the first breakpoint where the cumulative integral   # up to each breakpoint 
         if idx == 1
-            # result[i] = exp(μ - sqrt(2) * σ * erfinv( (A[1] * π * σ * erf((μ-log(breakpoints[1]))/(sqrt(2)*σ)) - sqrt(2π)*xi) / (A[1]*π*σ) ))
-            result[i] = exp(μ - sqrt(U(2)) * σ * erfinv( (A[1] * π * σ * erf((μ-log(breakpoints[1]))/(sqrt(U(2))*σ)) - sqrt(U(2π))*xi) / (A[1]*π*σ) ))
+            result[i] = exp(μ - sqrt2 * σ * erfinv( (A[1] * π * σ * erf((μ-log(breakpoints[1]))/(sqrt2*σ)) - sqrt2π*xi) / (A[1]*π*σ) ))
         else
             xi -= integrals[idx-1]   # If this is not the first breakpoint, then subtract off the cumulative integral and solve 
             a = one(S) - α[idx-1] # using power law CDF inversion
-            result[i] = (xi*a/A[idx] + breakpoints[idx]^a)^inv(a)
+            result[i] = (xi * a / A[idx] + breakpoints[idx]^a)^inv(a)
         end
     end
     return result
 end
 quantile(d::LogNormalBPL{T}, x::AbstractArray{S}) where {T, S <: Real} =
-    quantile!(Array{promote_type(T,S)}(undef,size(x)), d, x)
-cquantile(d::LogNormalBPL,x::Real) = quantile(d, 1-x)
+    quantile!(Array{promote_type(T, S)}(undef, size(x)), d, x)
+cquantile(d::LogNormalBPL, x::Real) = quantile(d, 1-x)
 
 #### Random sampling
 struct LogNormalBPLSampler{T} <: Sampleable{Univariate,Continuous}
@@ -250,10 +249,10 @@ function LogNormalBPLSampler(d::LogNormalBPL)
     nbreaks = length(A)
     # this works but the tuple interpolation is slow and allocating, so switch to a vector
     # integrals = cumsum( (lognormal_integral(A[1],μ,σ,breakpoints[1],breakpoints[2]), (pl_integral(A[i],α[i-1],breakpoints[i],breakpoints[i+1]) for i in 2:nbreaks)...) ) # calculate the cumulative integral up to each breakpoint
-    integrals = Array{partype(d)}(undef,nbreaks)
-    integrals[1] = lognormal_integral(A[1],μ,σ,breakpoints[1],breakpoints[2])
+    integrals = Array{partype(d)}(undef, nbreaks)
+    integrals[1] = lognormal_integral(A[1], μ, σ, breakpoints[1], breakpoints[2])
     @inbounds for i in 2:nbreaks
-        integrals[i] = pl_integral(A[i],α[i-1],breakpoints[i],breakpoints[i+1])
+        integrals[i] = pl_integral(A[i], α[i-1], breakpoints[i], breakpoints[i+1])
     end
     cumsum!(integrals, integrals)
     LogNormalBPLSampler(μ, σ, A, α, breakpoints, integrals)
@@ -263,12 +262,11 @@ function rand(rng::AbstractRNG, s::LogNormalBPLSampler{T}) where T
     μ, σ, A, α, breakpoints, integrals = s.μ, s.σ, s.A, s.α, s.breakpoints, s.integrals
     idx = findfirst(>=(x), integrals)  # find the first breakpoint where the cumulative integral   # up to each breakpoint 
     if idx == 1
-        # return exp(μ - sqrt(2) * σ * erfinv( (A[1] * π * σ * erf((μ-log(breakpoints[1]))/(sqrt(2)*σ)) - sqrt(2π)*x) / (A[1]*π*σ) ))
-        return exp(μ - sqrt(T(2)) * σ * erfinv( (A[1] * π * σ * erf((μ-log(breakpoints[1]))/(sqrt(T(2))*σ)) - sqrt(T(2π))*x) / (A[1]*π*σ) ))
+        return exp(μ - sqrt2 * σ * erfinv( (A[1] * π * σ * erf((μ-log(breakpoints[1]))/(sqrt2*σ)) - sqrt2π*x) / (A[1]*π*σ) ))
     else
         x -= integrals[idx-1]   # If this is not the first breakpoint, then subtract off the cumulative integral and solve 
         a = one(T) - α[idx-1] # using power law CDF inversion
-        return (x*a/A[idx] + breakpoints[idx]^a)^inv(a)
+        return (x * a / A[idx] + breakpoints[idx]^a)^inv(a)
     end
 end
 sampler(d::LogNormalBPL) = LogNormalBPLSampler(d)
@@ -279,7 +277,7 @@ rand(rng::AbstractRNG, d::LogNormalBPL) = rand(rng, sampler(d))
 #######################################################
 
 const chabrier2003_α = [2.3]
-const chabrier2003_breakpoints = [0.0,1.0,Inf]
+const chabrier2003_breakpoints = [0.0, 1.0, Inf]
 const chabrier2003_μ = log(0.079)#*log(10)
 const chabrier2003_σ = 0.69*log(10)
 """
