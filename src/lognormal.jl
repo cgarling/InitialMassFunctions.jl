@@ -115,10 +115,14 @@ function LogNormalBPL(μ::T, σ::T, α::SVector{N1,T}, breakpoints::SVector{N2,T
     end
     A ./= total_integral
     A = SVector(A)
-    # Calculate partial integrals up to each breakpoint
-    integrals = SVector{nbreaks, T}(lognormal_integral(A[1], μ, σ, breakpoints[1], breakpoints[2]),
-        (pl_integral(A[i], α[i-1], breakpoints[i], breakpoints[i+1]) for i in 2:nbreaks)...)
-    return LogNormalBPL(μ, σ, α, breakpoints, A, cumsum(integrals))
+    # Calculate partial integrals up to each breakpoint, then take cumulative sum
+    integrals = MVector{nbreaks, T}(undef)
+    integrals[1] = lognormal_integral(A[1], μ, σ, breakpoints[1], breakpoints[2])
+    for i in 2:nbreaks
+        integrals[i] = pl_integral(A[i], α[i-1], breakpoints[i], breakpoints[i+1])
+    end
+    integrals = cumsum(SVector(integrals))
+    return LogNormalBPL(μ, σ, α, breakpoints, A, integrals)
 end
 LogNormalBPL(μ::Real, σ::Real, α::Tuple, breakpoints::Tuple) =
     LogNormalBPL(μ, σ, SVector(α), SVector(breakpoints))
@@ -159,13 +163,13 @@ function pdf(d::LogNormalBPL, x::Real)
     ((x < minimum(d)) || (x > maximum(d))) && (return zero(partype(d)))
     μ, σ, A, α, breakpoints, _ = params(d)
     idx = findfirst(>=(x), breakpoints)
-    ((idx==1) || (idx==2)) ? (return A[1] / x * exp(-(log(x)-μ)^2/(2*σ^2))) : (return A[idx-1] * x^-α[idx-2])
+    @inbounds ((idx==1) || (idx==2)) ? (return A[1] / x * exp(-(log(x)-μ)^2/(2*σ^2))) : (return A[idx-1] * x^-α[idx-2])
 end
 function logpdf(d::LogNormalBPL, x::Real)
     if ((x >= minimum(d)) && (x <= maximum(d)))
         μ, σ, A, α, breakpoints, _ = params(d)
         idx = findfirst(>=(x), breakpoints)
-        ((idx==1) || (idx==2)) ? (return log(A[1]) - log(x) - (log(x)-μ)^2/(2*σ^2)) : (return log(A[idx-1]) - α[idx-2]*log(x))
+        @inbounds ((idx==1) || (idx==2)) ? (return log(A[1]) - log(x) - (log(x)-μ)^2/(2*σ^2)) : (return log(A[idx-1]) - α[idx-2]*log(x))
     else
         T = partype(d)
         return -T(Inf)
@@ -179,8 +183,8 @@ function cdf(d::LogNormalBPL, x::Real)
     end
     μ, σ, A, α, breakpoints, _ = params(d)
     idx = findfirst(>=(x), breakpoints)
-    result = lognormal_integral(A[1], μ, σ, breakpoints[1], min(x, breakpoints[2]))
-    idx > 2 && (result += sum(pl_integral(A[i], α[i-1], breakpoints[i], min(x, breakpoints[i+1])) for i in 2:idx-1))
+    @inbounds result = lognormal_integral(A[1], μ, σ, breakpoints[1], min(x, breakpoints[2]))
+    @inbounds idx > 2 && (result += sum(pl_integral(A[i], α[i-1], breakpoints[i], min(x, breakpoints[i+1])) for i in 2:idx-1))
     return result
 end
 ccdf(d::LogNormalBPL, x::Real) = one(partype(d)) - cdf(d, x)
@@ -190,7 +194,6 @@ function quantile(d::LogNormalBPL{S}, x::T) where {S, T <: Real}
     x >= one(T) && (return U(maximum(d)))
     μ, σ, A, α, breakpoints, integrals = params(d)
     nbreaks = length(A)
-
     idx = searchsortedfirst(integrals, x)  # find the first breakpoint where the cumulative integral
     @inbounds begin
         if idx == 1
