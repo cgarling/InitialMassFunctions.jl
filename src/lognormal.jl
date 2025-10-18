@@ -40,8 +40,8 @@ Definite integral of the lognormal probability distribution from `b1` to `b2`.
 lognormal_integral(A, μ, σ, b1, b2) = A * sqrthalfπ * σ * (erf((μ - log(b1)) / (sqrt2*σ)) - erf((μ - log(b2)) / (sqrt2*σ)))
 
 """
-    LogNormalBPL(μ::Real,σ::Real,α::AbstractVector{<:Real},breakpoints::AbstractVector{<:Real})
-    LogNormalBPL(μ::Real,σ::Real,α::Tuple,breakpoints::Tuple)
+    LogNormalBPL(μ::Real, σ::Real, α::AbstractVector{<:Real}, breakpoints::AbstractVector{<:Real})
+    LogNormalBPL(μ::Real, σ::Real, α::Tuple, breakpoints::Tuple)
 
 A LogNormal distribution at low masses, with a broken power law extension at high masses. This uses the natural log base like [Distributions.LogNormal](https://juliastats.org/Distributions.jl/stable/univariate/#Distributions.LogNormal); if you have σ and μ in base 10, then multiply them both by `log(10)`. Must have `length(α) == length(breakpoints)-2`. The probability distribution for this IMF model is
 
@@ -91,17 +91,17 @@ struct LogNormalBPL{T} <: AbstractIMF
         new{T}(μ, σ, A, α, breakpoints)
 end
 function LogNormalBPL(μ::T, σ::T, α::Vector{T}, breakpoints::Vector{T}) where T <: Real
-    @assert length(breakpoints) == length(α)+2
+    @assert length(breakpoints) == length(α) + 2
     @assert breakpoints[1] > 0
     nbreaks = length(α) + 1
-    A = Vector{T}(undef,nbreaks)
+    A = Vector{T}(undef, nbreaks)
     A[1] = one(T)
     # solve for the prefactor for the first power law after the lognormal component
-    A[2] = breakpoints[2]^(α[1]-1) * exp( -(log(breakpoints[2])-μ)^2/(2*σ^2))
+    A[2] = breakpoints[2]^(α[1] - 1) * exp( -(log(breakpoints[2]) - μ)^2 / (2*σ^2))
     # if there is more than one power law component
     if nbreaks > 2
         for i in 3:nbreaks
-            A[i] = A[i-1]*breakpoints[i]^-α[i-2] / breakpoints[i]^-α[i-1]
+            A[i] = A[i-1] * breakpoints[i]^-α[i-2] / breakpoints[i]^-α[i-1]
         end
     end
     # now A contains prefactors for each distribution component that makes them continuous
@@ -117,17 +117,17 @@ function LogNormalBPL(μ::T, σ::T, α::Vector{T}, breakpoints::Vector{T}) where
     return LogNormalBPL{T}(μ, σ, A, α, breakpoints)
 end
 LogNormalBPL(μ::Real, σ::Real, α::Tuple, breakpoints::Tuple) =
-    LogNormalBPL(μ,σ,collect(promote(α...)),collect(promote(breakpoints...)))
-LogNormalBPL(μ::T,σ::T,α::AbstractVector{T},breakpoints::AbstractVector{T}) where T<:Real =
-    LogNormalBPL(μ,σ,convert(Vector{T},α),convert(Vector{T},breakpoints))
-function LogNormalBPL(μ::A, σ::B, α::AbstractVector{C}, breakpoints::AbstractVector{D}) where {A<:Real, B<:Real, C<:Real, D<:Real}
+    LogNormalBPL(μ, σ, collect(promote(α...)), collect(promote(breakpoints...)))
+LogNormalBPL(μ::T, σ::T, α::AbstractVector{T}, breakpoints::AbstractVector{T}) where T <: Real =
+    LogNormalBPL(μ, σ, convert(Vector{T}, α), convert(Vector{T}, breakpoints))
+function LogNormalBPL(μ::A, σ::B, α::AbstractVector{C}, breakpoints::AbstractVector{D}) where {A <: Real, B <: Real, C <: Real, D <: Real}
     X = promote_type(A, B, C, D)
-    LogNormalBPL(convert(X,μ),convert(X,σ),convert(Vector{X},α), convert(Vector{X},breakpoints))
+    LogNormalBPL(convert(X, μ), convert(X, σ), convert(Vector{X}, α), convert(Vector{X}, breakpoints))
 end
 
 #### Conversions
 Base.convert(::Type{LogNormalBPL{T}}, d::LogNormalBPL) where T <: Real =
-    LogNormalBPL{T}(convert(T,d.μ), convert(T,d.σ), convert(Vector{T},d.A), convert(Vector{T},d.α), convert(Vector{T},d.breakpoints))
+    LogNormalBPL{T}(convert(T, d.μ), convert(T, d.σ), convert(Vector{T}, d.A), convert(Vector{T}, d.α), convert(Vector{T}, d.breakpoints))
 Base.convert(::Type{LogNormalBPL{T}}, d::LogNormalBPL{T}) where T <: Real = d
 
 #### Parameters
@@ -139,14 +139,12 @@ eltype(d::LogNormalBPL{T}) where T = T
 
 #### Statistics
 function mean(d::LogNormalBPL{T}) where T
-    μ,σ,A,α,breakpoints = params(d)
+    μ, σ, A, α, breakpoints = params(d)
     m = zero(T)
-    # m += A[1] * exp(μ + σ^2/2) * sqrt(π/2) * σ * (erf( (μ+σ^2-log(breakpoints[1])) / (sqrt(2)*σ) ) -
-    #     erf( (μ+σ^2-log(breakpoints[2])) / (sqrt(2)*σ) ) )
-    m += A[1] * exp(μ + σ^2/2) * sqrt(T(π)/2) * σ * (erf( (μ+σ^2-log(breakpoints[1])) / (sqrt(T(2))*σ) ) -
-        erf( (μ+σ^2-log(breakpoints[2])) / (sqrt(T(2))*σ) ) )
-    m += sum( (A[i]*breakpoints[i+1]^(2-α[i-1])/(2-α[i-1]) -
-        A[i]*breakpoints[i]^(2-α[i-1])/(2-α[i-1]) for i in 2:length(A) ) )
+    m += A[1] * exp(μ + σ^2/2) * sqrthalfπ * σ * (erf( (μ + σ^2 - log(breakpoints[1])) / (sqrt2 * σ) ) -
+        erf( (μ + σ^2 - log(breakpoints[2])) / (sqrt2 * σ) ) )
+    m += sum(A[i] / (2 - α[i-1]) * (breakpoints[i+1]^(2-α[i-1]) -
+        breakpoints[i]^(2-α[i-1])) for i in 2:length(A))
     return m
 end
 median(d::LogNormalBPL{T}) where T = quantile(d, T(0.5)) # this is temporary
