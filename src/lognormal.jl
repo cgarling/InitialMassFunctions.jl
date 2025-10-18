@@ -260,10 +260,12 @@ function rand(rng::AbstractRNG, s::LogNormalBPLSampler{T}) where T
             # return exp(μ - sqrt2 * σ * erfinv( (A[1] * π * σ * erf((μ-log(breakpoints[1]))/(sqrt2*σ)) - sqrt2π*x) / (A[1]*π*σ) ))
             E = erf((μ - log(breakpoints[1])) / (sqrt2 * σ))
             return exp(μ - sqrt2 * σ * erfinv(E - sqrt2π * x / (A[1] * π * σ)))
-        else
+        elseif idx <= length(A)
             x -= integrals[idx-1]   # If this is not the first breakpoint, then subtract off the cumulative integral and solve 
             a = one(T) - α[idx-1]   # using power law CDF inversion
             return (x * a / A[idx] + breakpoints[idx]^a)^inv(a)
+        else
+            error("Random sampling failed; index out of bounds. Check normalization of `integrals`.")
         end
     end
 end
