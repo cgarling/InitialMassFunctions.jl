@@ -37,10 +37,7 @@ Definite integral of the lognormal probability distribution from `b1` to `b2`.
 \\int_{b1}^{b2} \\, \\frac{A}{x} \\, \\exp \\left[ \\frac{ -\\left( \\log(x) - \\mu \\right)^2}{2\\sigma^2} \\right] \\, dx
 ```
 """
-lognormal_integral(A::T,μ::T,σ::T,b1::T,b2::T) where {T<:Number} =
-    A * sqrt(T(π)/2) * σ * (erf( (μ-log(b1))/(sqrt(T(2))*σ)) - erf( (μ-log(b2))/(sqrt(T(2))*σ)))
-lognormal_integral(A::Number,μ::Number,σ::Number,b1::Number,b2::Number) = lognormal_integral(promote(A,μ,σ,b1,b2)...)
-# lognormal_integral(A,μ,σ,b1,b2) = A * sqrt(π/2) * σ * (erf( (μ-log(b1))/(sqrt(2)*σ)) - erf( (μ-log(b2))/(sqrt(2)*σ)))
+lognormal_integral(A, μ, σ, b1, b2) = A * sqrthalfπ * σ * (erf((μ - log(b1)) / (sqrt2*σ)) - erf((μ - log(b2)) / (sqrt2*σ)))
 
 """
     LogNormalBPL(μ::Real,σ::Real,α::AbstractVector{<:Real},breakpoints::AbstractVector{<:Real})

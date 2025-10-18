@@ -1,7 +1,7 @@
 module InitialMassFunctions
 
 import Distributions: ContinuousUnivariateDistribution, Pareto, LogNormal, truncated, Truncated, mean, median, var, skewness, kurtosis, pdf, logpdf, cdf, ccdf, minimum, maximum, partype, quantile, cquantile, sampler, rand, Sampleable, Univariate, Continuous, eltype, params
-using IrrationalConstants: sqrt2, logten 
+using IrrationalConstants: sqrt2, sqrthalfπ, logten 
 using Random: AbstractRNG
 using SpecialFunctions: erf, erfinv
 
