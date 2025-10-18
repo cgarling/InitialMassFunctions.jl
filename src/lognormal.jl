@@ -276,10 +276,6 @@ rand(rng::AbstractRNG, d::LogNormalBPL) = rand(rng, sampler(d))
 # Specific types of LogNormalBPL
 #######################################################
 
-const chabrier2003_α = [2.3]
-const chabrier2003_breakpoints = [0.0, 1.0, Inf]
-const chabrier2003_μ = log(0.079)#*log(10)
-const chabrier2003_σ = 0.69*log(10)
 """
     Chabrier2003(mmin::Real=0.08, mmax::Real=Inf)
 
@@ -287,19 +283,23 @@ Function to instantiate the [Chabrier 2003](https://ui.adsabs.harvard.edu/abs/20
 """
 function Chabrier2003(mmin::T=0.08, mmax::T=Inf) where T <: Real
     @assert mmin > 0
-    mmin > one(T) && return PowerLaw(2.3,mmin,mmax) # if mmin>1, we are ONLY using the power law extension, so return power law IMF.
-    mmax < one(T) && return truncated(LogNormal(chabrier2003_μ,chabrier2003_σ);lower=mmin,upper=mmax) # if mmax<1, we are ONLY using the lognormal component, so return lognormal IMF.
-    idx1 = findfirst(>(mmin), chabrier2003_breakpoints)-1
-    idx2 = findfirst(>=(mmax), chabrier2003_breakpoints)
-    bp = convert(Vector{T}, chabrier2003_breakpoints[idx1:idx2])
+    α = T[2.3]
+    breakpoints = T[0.0, 1.0, Inf]
+    μ = log(T(0.079)) #*log(10)
+    σ = T(0.69) * logten
+    mmin > one(T) && return PowerLaw(T(2.3), mmin, mmax) # if mmin>1, we are ONLY using the power law extension, so return power law IMF.
+    mmax < one(T) && return truncated(LogNormal(μ, σ);lower=mmin, upper=mmax) # if mmax<1, we are ONLY using the lognormal component, so return lognormal IMF.
+    idx1 = findfirst(>(mmin), breakpoints) - 1
+    idx2 = findfirst(>=(mmax), breakpoints)
+    bp = breakpoints[idx1:idx2]
     bp[1] = mmin
     bp[end] = mmax
-    LogNormalBPL(convert(T,chabrier2003_μ), convert(T,chabrier2003_σ), convert(Vector{T},chabrier2003_α[idx1:(idx2-2)]), bp)
+    LogNormalBPL(μ, σ, α[idx1:(idx2-2)], bp)
 end
-Chabrier2003(mmin::Real, mmax::Real) = Chabrier2003(promote(mmin,mmax)...)
+Chabrier2003(mmin::Real, mmax::Real) = Chabrier2003(promote(mmin, mmax)...)
+
 #######################################################
-const chabrier2003_system_μ = log(0.22)
-const chabrier2003_system_σ = 0.57*log(10)
+
 """
     Chabrier2003System(mmin::Real=0.08, mmax::Real=Inf)
 
@@ -307,13 +307,17 @@ Function to instantiate the [Chabrier 2003](https://ui.adsabs.harvard.edu/abs/20
 """
 function Chabrier2003System(mmin::T=0.08, mmax::T=Inf) where T <: Real
     @assert mmin > 0
-    mmin > one(T) && return PowerLaw(2.3,mmin,mmax) # if mmin>1, we are ONLY using the power law extension, so return power law IMF.
-    mmax < one(T) && return truncated(LogNormal(chabrier2003_system_μ,chabrier2003_system_σ);lower=mmin,upper=mmax) # if mmax<1, we are ONLY using the lognormal component, so return lognormal IMF.
-    idx1 = findfirst(>(mmin), chabrier2003_breakpoints)-1
-    idx2 = findfirst(>=(mmax), chabrier2003_breakpoints)
-    bp = convert(Vector{T}, chabrier2003_breakpoints[idx1:idx2])
+    α = T[2.3]
+    breakpoints = T[0.0, 1.0, Inf]
+    μ = log(T(0.22))
+    σ = T(0.57) * logten
+    mmin > one(T) && return PowerLaw(T(2.3), mmin, mmax) # if mmin>1, we are ONLY using the power law extension, so return power law IMF.
+    mmax < one(T) && return truncated(LogNormal(μ, σ); lower=mmin, upper=mmax) # if mmax<1, we are ONLY using the lognormal component, so return lognormal IMF.
+    idx1 = findfirst(>(mmin), breakpoints) - 1
+    idx2 = findfirst(>=(mmax), breakpoints)
+    bp = breakpoints[idx1:idx2]
     bp[1] = mmin
     bp[end] = mmax
-    LogNormalBPL(convert(T,chabrier2003_system_μ), convert(T,chabrier2003_system_σ), convert(Vector{T},chabrier2003_α[idx1:(idx2-2)]), bp)
+    LogNormalBPL(μ, σ, α[idx1:(idx2-2)], bp)
 end
-Chabrier2003System(mmin::Real, mmax::Real) = Chabrier2003System(promote(mmin,mmax)...)
+Chabrier2003System(mmin::Real, mmax::Real) = Chabrier2003System(promote(mmin, mmax)...)
