@@ -259,7 +259,7 @@ function rand(rng::AbstractRNG, s::LogNormalBPLSampler{T}) where T
         return exp(μ - sqrt2 * σ * erfinv( (A[1] * π * σ * erf((μ-log(breakpoints[1]))/(sqrt2*σ)) - sqrt2π*x) / (A[1]*π*σ) ))
     else
         x -= integrals[idx-1]   # If this is not the first breakpoint, then subtract off the cumulative integral and solve 
-        a = one(T) - α[idx-1] # using power law CDF inversion
+        a = one(T) - α[idx-1]   # using power law CDF inversion
         return (x * a / A[idx] + breakpoints[idx]^a)^inv(a)
     end
 end
@@ -303,11 +303,7 @@ function Chabrier2003System(mmin::T=0.08, mmax::T=Inf) where T <: Real
     σ = T(57//100) * logten
     mmin > one(T) && return PowerLaw(T(2.3), mmin, mmax) # if mmin>1, we are ONLY using the power law extension, so return power law IMF.
     mmax < one(T) && return truncated(LogNormal(μ, σ); lower=mmin, upper=mmax) # if mmax<1, we are ONLY using the lognormal component, so return lognormal IMF.
-    idx1 = findfirst(>(mmin), breakpoints) - 1
-    idx2 = findfirst(>=(mmax), breakpoints)
-    bp = breakpoints[idx1:idx2]
-    bp[1] = mmin
-    bp[end] = mmax
-    LogNormalBPL(μ, σ, α[idx1:(idx2-2)], bp)
+    breakpoints = SVector{3,T}(mmin, 1, mmax)
+    LogNormalBPL(μ, σ, α, breakpoints)
 end
 Chabrier2003System(mmin::Real, mmax::Real) = Chabrier2003System(promote(mmin, mmax)...)
