@@ -254,13 +254,17 @@ end
 function rand(rng::AbstractRNG, s::LogNormalBPLSampler{T}) where T
     x = rand(rng, T)
     μ, σ, A, α, breakpoints, integrals = s.μ, s.σ, s.A, s.α, s.breakpoints, s.integrals
-    idx = findfirst(>=(x), integrals)
-    if idx == 1
-        return exp(μ - sqrt2 * σ * erfinv( (A[1] * π * σ * erf((μ-log(breakpoints[1]))/(sqrt2*σ)) - sqrt2π*x) / (A[1]*π*σ) ))
-    else
-        x -= integrals[idx-1]   # If this is not the first breakpoint, then subtract off the cumulative integral and solve 
-        a = one(T) - α[idx-1]   # using power law CDF inversion
-        return (x * a / A[idx] + breakpoints[idx]^a)^inv(a)
+    idx = searchsortedfirst(integrals, x)
+    @inbounds begin
+        if idx == 1
+            # return exp(μ - sqrt2 * σ * erfinv( (A[1] * π * σ * erf((μ-log(breakpoints[1]))/(sqrt2*σ)) - sqrt2π*x) / (A[1]*π*σ) ))
+            E = erf((μ - log(breakpoints[1])) / (sqrt2 * σ))
+            return exp(μ - sqrt2 * σ * erfinv(E - sqrt2π * x / (A[1] * π * σ)))
+        else
+            x -= integrals[idx-1]   # If this is not the first breakpoint, then subtract off the cumulative integral and solve 
+            a = one(T) - α[idx-1]   # using power law CDF inversion
+            return (x * a / A[idx] + breakpoints[idx]^a)^inv(a)
+        end
     end
 end
 sampler(d::LogNormalBPL) = LogNormalBPLSampler(d)
