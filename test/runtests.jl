@@ -2,10 +2,6 @@ using InitialMassFunctions
 using QuadGK
 using Test
 
-@testset "Allocations" begin
-    include("allocations_tests.jl")
-end
-
 function test_imf(d)
     mmin, mmax = extrema(d)
     T = partype(d)
@@ -305,4 +301,8 @@ end
         d = Chabrier2003System(0.08, 100.0)
         test_imf_lognormal(d)
     end
+end
+
+@testset "Allocations" begin
+    include("allocations_tests.jl")
 end
