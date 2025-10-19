@@ -152,7 +152,7 @@ function skewness(d::BrokenPowerLaw)
 end
 
 function kurtosis(d::BrokenPowerLaw)
-    A, α, breakpoints = params(d)
+    A, α, breakpoints, _ = params(d)
     X4 = sum( (A[i]*breakpoints[i+1]^(5-α[i])/(5-α[i]) -
         A[i]*breakpoints[i]^(5-α[i])/(5-α[i]) for i in 1:length(A) ) )
     X3 = sum( (A[i]*breakpoints[i+1]^(4-α[i])/(4-α[i]) -
@@ -210,7 +210,7 @@ function quantile(d::BrokenPowerLaw{S}, x::T) where {S, T <: Real}
 end
 function quantile!(result::AbstractArray, d::BrokenPowerLaw{S}, x::AbstractArray{T}) where {S, T <: Real}
     @assert axes(result) == axes(x)
-    A, α, breakpoints = params(d)
+    A, α, breakpoints, integrals = params(d)
     @inbounds for i in eachindex(x)
         xi = x[i]
         xi <= zero(T) && (result[i] = minimum(d); continue)
