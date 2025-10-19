@@ -2,6 +2,10 @@ using InitialMassFunctions
 using QuadGK
 using Test
 
+@testset "Allocations" begin
+    include("allocations_tests.jl")
+end
+
 function test_imf(d)
     mmin, mmax = extrema(d)
     T = partype(d)
@@ -116,7 +120,7 @@ end
 
 @testset "BrokenPowerLaw" begin
     @testset "Float64" begin
-        d = BrokenPowerLaw([1.3,2.35],[0.08,1.0,100.0])
+        d = BrokenPowerLaw([1.3,2.35], [0.08,1.0,100.0])
         @test d isa BrokenPowerLaw{Float64}
         @test partype(d) == Float64
         @test convert(BrokenPowerLaw{Float32},d) isa BrokenPowerLaw{Float32}
@@ -219,7 +223,9 @@ end
 
     # test named types of BPLs
     @testset "Chabrier2001BPL" begin
-        d = Chabrier2001BPL(0.08,100.0)
+        d = Chabrier2001BPL(0.08, 100.0)
+        @test convert(BrokenPowerLaw{Float32}, d) isa BrokenPowerLaw{Float32}
+        @test convert(BrokenPowerLaw{Float64}, d) isa BrokenPowerLaw{Float64}
         test_imf(d)
     end
     @testset "Kroupa2001" begin
@@ -290,11 +296,13 @@ end
 
     # test named types of BPLs
     @testset "Chabrier2003" begin
-        d = Chabrier2003(0.08,100.0)
+        d = Chabrier2003(0.08, 100.0)
+        @test convert(LogNormalBPL{Float32}, d) isa LogNormalBPL{Float32}
+        @test convert(LogNormalBPL{Float64}, d) isa LogNormalBPL{Float64}
         test_imf_lognormal(d)
     end
     @testset "Chabrier2003System" begin
-        d = Chabrier2003System(0.08,100.0)
+        d = Chabrier2003System(0.08, 100.0)
         test_imf_lognormal(d)
     end
 end

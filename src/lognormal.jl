@@ -263,6 +263,7 @@ Function to instantiate the [Chabrier 2003](https://ui.adsabs.harvard.edu/abs/20
 """
 function Chabrier2003(mmin::T=0.08, mmax::T=Inf) where T <: Real
     @assert mmin > 0
+    @assert mmin < mmax
     α = SVector{1,T}(2.3)
     μ = log(T(79//1000)) #*log(10)
     σ = T(69//100) * logten
@@ -282,6 +283,7 @@ Function to instantiate the [Chabrier 2003](https://ui.adsabs.harvard.edu/abs/20
 """
 function Chabrier2003System(mmin::T=0.08, mmax::T=Inf) where T <: Real
     @assert mmin > 0
+    @assert mmin < mmax
     α = SVector{1,T}(2.3)
     μ = log(T(22//100))
     σ = T(57//100) * logten

@@ -4,7 +4,7 @@ import Distributions: ContinuousUnivariateDistribution, Pareto, LogNormal, trunc
 using IrrationalConstants: sqrt2, sqrt2π, sqrthalfπ, logten 
 using Random: AbstractRNG
 using SpecialFunctions: erf, erfinv
-using StaticArrays: SVector, MVector
+using StaticArrays: SVector, MVector, SUnitRange
 
 """ Abstract type for IMFs; a subtype of `Distributions.ContinuousUnivariateDistribution`, as all IMF models can be described as continuous, univariate PDFs. """
 abstract type AbstractIMF <: ContinuousUnivariateDistribution end
