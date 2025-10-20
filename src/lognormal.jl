@@ -13,20 +13,21 @@ truncated such that the probability distribution is 0 below `mmin` and above `mm
  - `μ`; see [Distributions.LogNormal](https://juliastats.org/Distributions.jl/stable/univariate/#Distributions.LogNormal)
  - `σ`; see [Distributions.LogNormal](https://juliastats.org/Distributions.jl/stable/univariate/#Distributions.LogNormal)
 """
-LogNormalIMF(μ::Real, σ::Real, mmin::Real, mmax::Real) = truncated(LogNormal(μ,σ);lower=mmin,upper=mmax)
+LogNormalIMF(μ::Real, σ::Real, mmin::Real, mmax::Real) = truncated(LogNormal(μ, σ); lower=mmin, upper=mmax)
 function mean(d::Truncated{LogNormal{T}, Continuous, T}) where T
-    mmin, mmax = extrema(d)
-    μ, σ = params( d.untruncated )
-    # return (α * θ^α / (1-α) / d.ucdf) * (mmax^(1-α) - mmin^(1-α))
+    mmin::T, mmax::T = extrema(d)
+    μ, σ = params(d.untruncated)
     return -exp(μ + σ^2/2) / 2 / (d.ucdf - d.lcdf) *
-        ( erf( (μ + σ^2 - log(mmax)) / (sqrt(2)*σ) ) - erf( (μ + σ^2 - log(mmin)) / (sqrt(2)*σ) ) )
+        ( erf( (μ + σ^2 - log(mmax)) / (sqrt2*σ) ) - erf( (μ + σ^2 - log(mmin)) / (sqrt2*σ) ) )
 end
+
 """
     Chabrier2001LogNormal(mmin::Real=0.08, mmax::Real=Inf)
 
 Function to instantiate the [Chabrier 2001](https://ui.adsabs.harvard.edu/abs/2001ApJ...554.1274C/abstract) lognormal IMF for single stars. Returns an instance of `Distributions.Truncated(Distributions.LogNormal)`. See also [`Chabrier2003`](@ref) which has the same lognormal form for masses below one solar mass, but a power law extension at higher masses. 
 """
-Chabrier2001LogNormal(mmin::Real=0.08, mmax::Real=Inf) = LogNormalIMF(log(0.1), 0.627*log(10), mmin, mmax)
+Chabrier2001LogNormal(mmin::T, mmax::T) where {T <: Real} = LogNormalIMF(log(T(1//10)), T(627//1000)*logten, mmin, mmax)
+Chabrier2001LogNormal(mmin::Real=0.08, mmax::Real=Inf) = Chabrier2001LogNormal(promote(mmin, mmax)...)
 
 """
     lognormal_integral(μ, σ, b1, b2)
@@ -36,14 +37,11 @@ Definite integral of the lognormal probability distribution from `b1` to `b2`.
 \\int_{b1}^{b2} \\, \\frac{A}{x} \\, \\exp \\left[ \\frac{ -\\left( \\log(x) - \\mu \\right)^2}{2\\sigma^2} \\right] \\, dx
 ```
 """
-lognormal_integral(A::T,μ::T,σ::T,b1::T,b2::T) where {T<:Number} =
-    A * sqrt(T(π)/2) * σ * (erf( (μ-log(b1))/(sqrt(T(2))*σ)) - erf( (μ-log(b2))/(sqrt(T(2))*σ)))
-lognormal_integral(A::Number,μ::Number,σ::Number,b1::Number,b2::Number) = lognormal_integral(promote(A,μ,σ,b1,b2)...)
-# lognormal_integral(A,μ,σ,b1,b2) = A * sqrt(π/2) * σ * (erf( (μ-log(b1))/(sqrt(2)*σ)) - erf( (μ-log(b2))/(sqrt(2)*σ)))
+lognormal_integral(A, μ, σ, b1, b2) = A * sqrthalfπ * σ * (erf((μ - log(b1)) / (sqrt2*σ)) - erf((μ - log(b2)) / (sqrt2*σ)))
 
 """
-    LogNormalBPL(μ::Real,σ::Real,α::AbstractVector{<:Real},breakpoints::AbstractVector{<:Real})
-    LogNormalBPL(μ::Real,σ::Real,α::Tuple,breakpoints::Tuple)
+    LogNormalBPL(μ::Real, σ::Real, α::AbstractVector{<:Real}, breakpoints::AbstractVector{<:Real})
+    LogNormalBPL(μ::Real, σ::Real, α::Tuple, breakpoints::Tuple)
 
 A LogNormal distribution at low masses, with a broken power law extension at high masses. This uses the natural log base like [Distributions.LogNormal](https://juliastats.org/Distributions.jl/stable/univariate/#Distributions.LogNormal); if you have σ and μ in base 10, then multiply them both by `log(10)`. Must have `length(α) == length(breakpoints)-2`. The probability distribution for this IMF model is
 
@@ -83,27 +81,27 @@ There is some setup necessary for `quantile` and other derived methods, so it is
  - `rand(rng::AbstractRNG, d::LogNormalBPL,s...)` 
  - Other methods from `Distributions.jl` should also work because `LogNormalBPL <: AbstractIMF <: Distributions.ContinuousUnivariateDistribution`. For example, `rand!(rng::AbstractRNG, d::LogNormalBPL, x::AbstractArray)`.
 """
-struct LogNormalBPL{T} <: AbstractIMF
+struct LogNormalBPL{T,N1,N2,N3} <: AbstractIMF
     μ::T
     σ::T
-    A::Vector{T}      # normalization parameters
-    α::Vector{T}      # power law indexes
-    breakpoints::Vector{T} # bounds of each break
-    LogNormalBPL{T}(μ::T, σ::T, A::Vector{T}, α::Vector{T}, breakpoints::Vector{T}) where {T} =
-        new{T}(μ, σ, A, α, breakpoints)
+    α::SVector{N1,T}
+    breakpoints::SVector{N2,T}
+    A::SVector{N3,T}
+    integrals::SVector{N3,T}
 end
-function LogNormalBPL(μ::T, σ::T, α::Vector{T}, breakpoints::Vector{T}) where T <: Real
-    @assert length(breakpoints) == length(α)+2
+
+function LogNormalBPL(μ::T, σ::T, α::SVector{N1,T}, breakpoints::SVector{N2,T}) where {T <: Real, N1, N2}
+    @assert length(breakpoints) == length(α) + 2
     @assert breakpoints[1] > 0
     nbreaks = length(α) + 1
-    A = Vector{T}(undef,nbreaks)
+    A = MVector{nbreaks, T}(undef)
     A[1] = one(T)
     # solve for the prefactor for the first power law after the lognormal component
-    A[2] = breakpoints[2]^(α[1]-1) * exp( -(log(breakpoints[2])-μ)^2/(2*σ^2))
+    A[2] = breakpoints[2]^(α[1] - 1) * exp( -(log(breakpoints[2]) - μ)^2 / (2*σ^2))
     # if there is more than one power law component
     if nbreaks > 2
         for i in 3:nbreaks
-            A[i] = A[i-1]*breakpoints[i]^-α[i-2] / breakpoints[i]^-α[i-1]
+            A[i] = A[i-1] * breakpoints[i]^-α[i-2] / breakpoints[i]^-α[i-1]
         end
     end
     # now A contains prefactors for each distribution component that makes them continuous
@@ -116,24 +114,32 @@ function LogNormalBPL(μ::T, σ::T, α::Vector{T}, breakpoints::Vector{T}) where
         total_integral += pl_integral(A[i], α[i-1], breakpoints[i], breakpoints[i+1])
     end
     A ./= total_integral
-    return LogNormalBPL{T}(μ, σ, A, α, breakpoints)
+    A = SVector(A)
+    # Calculate partial integrals up to each breakpoint, then take cumulative sum
+    integrals = MVector{nbreaks, T}(undef)
+    integrals[1] = lognormal_integral(A[1], μ, σ, breakpoints[1], breakpoints[2])
+    for i in 2:nbreaks
+        integrals[i] = pl_integral(A[i], α[i-1], breakpoints[i], breakpoints[i+1])
+    end
+    integrals = cumsum(SVector(integrals))
+    return LogNormalBPL(μ, σ, α, breakpoints, A, integrals)
 end
 LogNormalBPL(μ::Real, σ::Real, α::Tuple, breakpoints::Tuple) =
-    LogNormalBPL(μ,σ,collect(promote(α...)),collect(promote(breakpoints...)))
-LogNormalBPL(μ::T,σ::T,α::AbstractVector{T},breakpoints::AbstractVector{T}) where T<:Real =
-    LogNormalBPL(μ,σ,convert(Vector{T},α),convert(Vector{T},breakpoints))
-function LogNormalBPL(μ::A, σ::B, α::AbstractVector{C}, breakpoints::AbstractVector{D}) where {A<:Real, B<:Real, C<:Real, D<:Real}
+    LogNormalBPL(μ, σ, SVector(α), SVector(breakpoints))
+LogNormalBPL(μ::T, σ::T, α::AbstractVector{T}, breakpoints::AbstractVector{T}) where T <: Real =
+    LogNormalBPL(μ, σ, SVector{length(α)}(α), SVector{length(breakpoints)}(breakpoints))
+function LogNormalBPL(μ::A, σ::B, α::AbstractVector{C}, breakpoints::AbstractVector{D}) where {A <: Real, B <: Real, C <: Real, D <: Real}
     X = promote_type(A, B, C, D)
-    LogNormalBPL(convert(X,μ),convert(X,σ),convert(Vector{X},α), convert(Vector{X},breakpoints))
+    LogNormalBPL(convert(X, μ), convert(X, σ), convert(SVector{length(α), X}, α), convert(SVector{length(breakpoints), X}, breakpoints))
 end
 
 #### Conversions
-Base.convert(::Type{LogNormalBPL{T}}, d::LogNormalBPL) where T <: Real =
-    LogNormalBPL{T}(convert(T,d.μ), convert(T,d.σ), convert(Vector{T},d.A), convert(Vector{T},d.α), convert(Vector{T},d.breakpoints))
-Base.convert(::Type{LogNormalBPL{T}}, d::LogNormalBPL{T}) where T <: Real = d
+Base.convert(::Type{LogNormalBPL{T}}, d::LogNormalBPL{S, N1, N2, N3}) where {T, S, N1, N2, N3} =
+    LogNormalBPL{T, N1, N2, N3}(convert(T, d.μ), convert(T, d.σ), convert(SVector{N1,T}, d.α), convert(SVector{N2,T}, d.breakpoints), convert(SVector{N3,T}, d.A), convert(SVector{N3,T}, d.integrals))
+Base.convert(::Type{LogNormalBPL{T}}, d::LogNormalBPL{T}) where T = d
 
 #### Parameters
-params(d::LogNormalBPL) = d.μ, d.σ, d.A, d.α, d.breakpoints
+params(d::LogNormalBPL) = d.μ, d.σ, d.A, d.α, d.breakpoints, d.integrals
 minimum(d::LogNormalBPL) = minimum(d.breakpoints)
 maximum(d::LogNormalBPL) = maximum(d.breakpoints)
 partype(d::LogNormalBPL{T}) where T = T
@@ -141,31 +147,29 @@ eltype(d::LogNormalBPL{T}) where T = T
 
 #### Statistics
 function mean(d::LogNormalBPL{T}) where T
-    μ,σ,A,α,breakpoints = params(d)
+    μ, σ, A, α, breakpoints, _ = params(d)
     m = zero(T)
-    # m += A[1] * exp(μ + σ^2/2) * sqrt(π/2) * σ * (erf( (μ+σ^2-log(breakpoints[1])) / (sqrt(2)*σ) ) -
-    #     erf( (μ+σ^2-log(breakpoints[2])) / (sqrt(2)*σ) ) )
-    m += A[1] * exp(μ + σ^2/2) * sqrt(T(π)/2) * σ * (erf( (μ+σ^2-log(breakpoints[1])) / (sqrt(T(2))*σ) ) -
-        erf( (μ+σ^2-log(breakpoints[2])) / (sqrt(T(2))*σ) ) )
-    m += sum( (A[i]*breakpoints[i+1]^(2-α[i-1])/(2-α[i-1]) -
-        A[i]*breakpoints[i]^(2-α[i-1])/(2-α[i-1]) for i in 2:length(A) ) )
+    m += A[1] * exp(μ + σ^2/2) * sqrthalfπ * σ * (erf( (μ + σ^2 - log(breakpoints[1])) / (sqrt2 * σ) ) -
+        erf( (μ + σ^2 - log(breakpoints[2])) / (sqrt2 * σ) ) )
+    m += sum(A[i] / (2 - α[i-1]) * (breakpoints[i+1]^(2-α[i-1]) -
+        breakpoints[i]^(2-α[i-1])) for i in 2:length(A))
     return m
 end
-median(d::LogNormalBPL{T}) where T = quantile(d, T(0.5)) # this is temporary
+median(d::LogNormalBPL{T}) where T = quantile(d, T(1//2)) # this is temporary
 # mode(d::BrokenPowerLaw) = d.breakpoints[argmin(d.α)] # this is not always correct
 
 #### Evaluation
 function pdf(d::LogNormalBPL, x::Real)
     ((x < minimum(d)) || (x > maximum(d))) && (return zero(partype(d)))
-    μ, σ, A, α, breakpoints = params(d)
+    μ, σ, A, α, breakpoints, _ = params(d)
     idx = findfirst(>=(x), breakpoints)
-    ((idx==1) || (idx==2)) ? (return A[1] / x * exp(-(log(x)-μ)^2/(2*σ^2))) : (return A[idx-1] * x^-α[idx-2])
+    @inbounds ((idx==1) || (idx==2)) ? (return A[1] / x * exp(-(log(x)-μ)^2/(2*σ^2))) : (return A[idx-1] * x^-α[idx-2])
 end
 function logpdf(d::LogNormalBPL, x::Real)
     if ((x >= minimum(d)) && (x <= maximum(d)))
-        μ, σ, A, α, breakpoints = params(d)
+        μ, σ, A, α, breakpoints, _ = params(d)
         idx = findfirst(>=(x), breakpoints)
-        ((idx==1) || (idx==2)) ? (return log(A[1]) - log(x) - (log(x)-μ)^2/(2*σ^2)) : (return log(A[idx-1]) - α[idx-2]*log(x))
+        @inbounds ((idx==1) || (idx==2)) ? (return log(A[1]) - log(x) - (log(x)-μ)^2/(2*σ^2)) : (return log(A[idx-1]) - α[idx-2]*log(x))
     else
         T = partype(d)
         return -T(Inf)
@@ -177,115 +181,81 @@ function cdf(d::LogNormalBPL, x::Real)
     elseif x >= maximum(d)
         return one(partype(d))
     end
-    μ, σ, A, α, breakpoints = params(d)
+    μ, σ, A, α, breakpoints, _ = params(d)
     idx = findfirst(>=(x), breakpoints)
-    result = lognormal_integral(A[1], μ, σ, breakpoints[1], min(x,breakpoints[2]))
-    idx > 2 && (result += sum(pl_integral(A[i],α[i-1],breakpoints[i],min(x,breakpoints[i+1])) for i in 2:idx-1))
+    @inbounds result = lognormal_integral(A[1], μ, σ, breakpoints[1], min(x, breakpoints[2]))
+    @inbounds idx > 2 && (result += sum(pl_integral(A[i], α[i-1], breakpoints[i], min(x, breakpoints[i+1])) for i in 2:idx-1))
     return result
 end
-ccdf(d::LogNormalBPL, x::Real) = one(partype(d)) - cdf(d,x)
+ccdf(d::LogNormalBPL, x::Real) = one(partype(d)) - cdf(d, x)
 function quantile(d::LogNormalBPL{S}, x::T) where {S, T <: Real}
     U = promote_type(S, T)
     x <= zero(T) && (return U(minimum(d)))
     x >= one(T) && (return U(maximum(d)))
-    μ, σ, A, α, breakpoints = params(d)
+    μ, σ, A, α, breakpoints, integrals = params(d)
     nbreaks = length(A)
-    # this works but the tuple interpolation is slow and allocating, so switch to a vector
-    # integrals = cumsum( (lognormal_integral(A[1],μ,σ,breakpoints[1],breakpoints[2]), (pl_integral(A[i],α[i-1],breakpoints[i],breakpoints[i+1]) for i in 2:nbreaks)...) ) # calculate the cumulative integral up to each breakpoint
-    integrals = Array{U}(undef,nbreaks)
-    integrals[1] = lognormal_integral(A[1],μ,σ,breakpoints[1],breakpoints[2])
-    for i in 2:nbreaks
-        integrals[i] = pl_integral(A[i],α[i-1],breakpoints[i],breakpoints[i+1])
-    end
-    cumsum!(integrals, integrals)
-    idx = findfirst(>=(x), integrals)  # find the first breakpoint where the cumulative integral
-    if idx == 1
-        # return exp(μ - sqrt(2) * σ * erfinv( (A[1] * π * σ * erf((μ-log(breakpoints[1]))/(sqrt(2)*σ)) - sqrt(2π)*x) / (A[1]*π*σ) ))
-        return exp(μ - sqrt(U(2)) * σ * erfinv( (A[1] * π * σ * erf((μ-log(breakpoints[1]))/(sqrt(U(2))*σ)) - sqrt(U(2π))*x) / (A[1]*π*σ) ))
-    else
-        x -= integrals[idx-1]   # If this is not the first breakpoint, then subtract off the cumulative integral and solve 
-        a = one(S) - α[idx-1] # using power law CDF inversion
-        return (x*a/A[idx] + breakpoints[idx]^a)^inv(a)
+    idx = searchsortedfirst(integrals, x)  # find the first breakpoint where the cumulative integral
+    @inbounds begin
+        if idx == 1
+            # return exp(μ - sqrt(2) * σ * erfinv( (A[1] * π * σ * erf((μ-log(breakpoints[1]))/(sqrt(2)*σ)) - sqrt(2π)*x) / (A[1]*π*σ) ))
+            return exp(μ - sqrt2 * σ * erfinv( (A[1] * π * σ * erf((μ-log(breakpoints[1]))/(sqrt2*σ)) - sqrt2π*x) / (A[1]*π*σ) ))
+        elseif idx <= nbreaks
+            x -= integrals[idx-1]   # If this is not the first breakpoint, then subtract off the cumulative integral and solve 
+            a = one(S) - α[idx-1] # using power law CDF inversion
+            return (x * a / A[idx] + breakpoints[idx]^a)^inv(a)
+        else
+            error("Quantile calculation failed; index out of bounds. Check normalization of `integrals`.")
+        end
     end
 end
-function quantile!(result::AbstractArray{U}, d::LogNormalBPL{S}, x::AbstractArray{T}) where {S, T<:Real, U<:Real}
+function quantile!(result::AbstractArray{U}, d::LogNormalBPL{S}, x::AbstractArray{T}) where {S, T <: Real, U <: Real}
     @assert axes(result) == axes(x)
-    μ, σ, A, α, breakpoints = params(d)
+    μ, σ, A, α, breakpoints, integrals = params(d)
     nbreaks = length(A)
-    # this works but the tuple interpolation is slow and allocating, so switch to a vector
-    # integrals = cumsum( (lognormal_integral(A[1],μ,σ,breakpoints[1],breakpoints[2]), (pl_integral(A[i],α[i-1],breakpoints[i],breakpoints[i+1]) for i in 2:nbreaks)...) ) # calculate the cumulative integral up to each breakpoint
-    integrals = Array{eltype(result)}(undef,nbreaks)
-    integrals[1] = lognormal_integral(A[1],μ,σ,breakpoints[1],breakpoints[2])
-    @inbounds for i in 2:nbreaks
-        integrals[i] = pl_integral(A[i],α[i-1],breakpoints[i],breakpoints[i+1])
-    end
-    cumsum!(integrals, integrals)
     @inbounds for i in eachindex(x)
         xi = x[i]
         xi <= zero(T) && (result[i]=minimum(d); continue)
         xi >= one(T) && (result[i]=maximum(d); continue)
-        idx = findfirst(>=(xi), integrals)  # find the first breakpoint where the cumulative integral   # up to each breakpoint 
+        idx = searchsortedfirst(integrals, xi)
         if idx == 1
-            # result[i] = exp(μ - sqrt(2) * σ * erfinv( (A[1] * π * σ * erf((μ-log(breakpoints[1]))/(sqrt(2)*σ)) - sqrt(2π)*xi) / (A[1]*π*σ) ))
-            result[i] = exp(μ - sqrt(U(2)) * σ * erfinv( (A[1] * π * σ * erf((μ-log(breakpoints[1]))/(sqrt(U(2))*σ)) - sqrt(U(2π))*xi) / (A[1]*π*σ) ))
-        else
+            result[i] = exp(μ - sqrt2 * σ * erfinv( (A[1] * π * σ * erf((μ-log(breakpoints[1]))/(sqrt2*σ)) - sqrt2π*xi) / (A[1]*π*σ) ))
+        elseif idx <= nbreaks
             xi -= integrals[idx-1]   # If this is not the first breakpoint, then subtract off the cumulative integral and solve 
             a = one(S) - α[idx-1] # using power law CDF inversion
-            result[i] = (xi*a/A[idx] + breakpoints[idx]^a)^inv(a)
+            result[i] = (xi * a / A[idx] + breakpoints[idx]^a)^inv(a)
+        else
+            error("Quantile calculation failed; index out of bounds. Check normalization of `integrals`.")
         end
     end
     return result
 end
 quantile(d::LogNormalBPL{T}, x::AbstractArray{S}) where {T, S <: Real} =
-    quantile!(Array{promote_type(T,S)}(undef,size(x)), d, x)
-cquantile(d::LogNormalBPL,x::Real) = quantile(d, 1-x)
+    quantile!(Array{promote_type(T, S)}(undef, size(x)), d, x)
+cquantile(d::LogNormalBPL, x::Real) = quantile(d, 1-x)
 
-#### Random sampling
-struct LogNormalBPLSampler{T} <: Sampleable{Univariate,Continuous}
-    μ::T                   # lognormal mean
-    σ::T                   # lognormal standard deviation
-    A::Vector{T}           # normalization parameters
-    α::Vector{T}           # power law indexes
-    breakpoints::Vector{T} # bounds of each break
-    integrals::Vector{T}   # cumulative integral up to each breakpoint
-end
-function LogNormalBPLSampler(d::LogNormalBPL)
-    μ, σ, A, α, breakpoints = params(d)
-    nbreaks = length(A)
-    # this works but the tuple interpolation is slow and allocating, so switch to a vector
-    # integrals = cumsum( (lognormal_integral(A[1],μ,σ,breakpoints[1],breakpoints[2]), (pl_integral(A[i],α[i-1],breakpoints[i],breakpoints[i+1]) for i in 2:nbreaks)...) ) # calculate the cumulative integral up to each breakpoint
-    integrals = Array{partype(d)}(undef,nbreaks)
-    integrals[1] = lognormal_integral(A[1],μ,σ,breakpoints[1],breakpoints[2])
-    @inbounds for i in 2:nbreaks
-        integrals[i] = pl_integral(A[i],α[i-1],breakpoints[i],breakpoints[i+1])
-    end
-    cumsum!(integrals, integrals)
-    LogNormalBPLSampler(μ, σ, A, α, breakpoints, integrals)
-end
-function rand(rng::AbstractRNG, s::LogNormalBPLSampler{T}) where T
+function rand(rng::AbstractRNG, s::LogNormalBPL{T}) where T
     x = rand(rng, T)
     μ, σ, A, α, breakpoints, integrals = s.μ, s.σ, s.A, s.α, s.breakpoints, s.integrals
-    idx = findfirst(>=(x), integrals)  # find the first breakpoint where the cumulative integral   # up to each breakpoint 
-    if idx == 1
-        # return exp(μ - sqrt(2) * σ * erfinv( (A[1] * π * σ * erf((μ-log(breakpoints[1]))/(sqrt(2)*σ)) - sqrt(2π)*x) / (A[1]*π*σ) ))
-        return exp(μ - sqrt(T(2)) * σ * erfinv( (A[1] * π * σ * erf((μ-log(breakpoints[1]))/(sqrt(T(2))*σ)) - sqrt(T(2π))*x) / (A[1]*π*σ) ))
-    else
-        x -= integrals[idx-1]   # If this is not the first breakpoint, then subtract off the cumulative integral and solve 
-        a = one(T) - α[idx-1] # using power law CDF inversion
-        return (x*a/A[idx] + breakpoints[idx]^a)^inv(a)
+    idx = searchsortedfirst(integrals, x)
+    @inbounds begin
+        if idx == 1
+            # return exp(μ - sqrt2 * σ * erfinv( (A[1] * π * σ * erf((μ-log(breakpoints[1]))/(sqrt2*σ)) - sqrt2π*x) / (A[1]*π*σ) ))
+            E = erf((μ - log(breakpoints[1])) / (sqrt2 * σ))
+            return exp(μ - sqrt2 * σ * erfinv(E - sqrt2π * x / (A[1] * π * σ)))
+        elseif idx <= length(A)
+            x -= integrals[idx-1]   # If this is not the first breakpoint, then subtract off the cumulative integral and solve 
+            a = one(T) - α[idx-1]   # using power law CDF inversion
+            return (x * a / A[idx] + breakpoints[idx]^a)^inv(a)
+        else
+            error("Random sampling failed; index out of bounds. Check normalization of `integrals`.")
+        end
     end
 end
-sampler(d::LogNormalBPL) = LogNormalBPLSampler(d)
-rand(rng::AbstractRNG, d::LogNormalBPL) = rand(rng, sampler(d))
 
 #######################################################
 # Specific types of LogNormalBPL
 #######################################################
 
-const chabrier2003_α = [2.3]
-const chabrier2003_breakpoints = [0.0,1.0,Inf]
-const chabrier2003_μ = log(0.079)#*log(10)
-const chabrier2003_σ = 0.69*log(10)
 """
     Chabrier2003(mmin::Real=0.08, mmax::Real=Inf)
 
@@ -293,19 +263,19 @@ Function to instantiate the [Chabrier 2003](https://ui.adsabs.harvard.edu/abs/20
 """
 function Chabrier2003(mmin::T=0.08, mmax::T=Inf) where T <: Real
     @assert mmin > 0
-    mmin > one(T) && return PowerLaw(2.3,mmin,mmax) # if mmin>1, we are ONLY using the power law extension, so return power law IMF.
-    mmax < one(T) && return truncated(LogNormal(chabrier2003_μ,chabrier2003_σ);lower=mmin,upper=mmax) # if mmax<1, we are ONLY using the lognormal component, so return lognormal IMF.
-    idx1 = findfirst(>(mmin), chabrier2003_breakpoints)-1
-    idx2 = findfirst(>=(mmax), chabrier2003_breakpoints)
-    bp = convert(Vector{T}, chabrier2003_breakpoints[idx1:idx2])
-    bp[1] = mmin
-    bp[end] = mmax
-    LogNormalBPL(convert(T,chabrier2003_μ), convert(T,chabrier2003_σ), convert(Vector{T},chabrier2003_α[idx1:(idx2-2)]), bp)
+    @assert mmin < mmax
+    α = SVector{1,T}(2.3)
+    μ = log(T(79//1000)) #*log(10)
+    σ = T(69//100) * logten
+    mmin > one(T) && return PowerLaw(T(2.3), mmin, mmax) # if mmin>1, we are ONLY using the power law extension, so return power law IMF.
+    mmax < one(T) && return truncated(LogNormal(μ, σ); lower=mmin, upper=mmax) # if mmax<1, we are ONLY using the lognormal component, so return lognormal IMF.
+    breakpoints = SVector{3,T}(mmin, 1, mmax)
+    LogNormalBPL(μ, σ, α, breakpoints)
 end
-Chabrier2003(mmin::Real, mmax::Real) = Chabrier2003(promote(mmin,mmax)...)
+Chabrier2003(mmin::Real, mmax::Real) = Chabrier2003(promote(mmin, mmax)...)
+
 #######################################################
-const chabrier2003_system_μ = log(0.22)
-const chabrier2003_system_σ = 0.57*log(10)
+
 """
     Chabrier2003System(mmin::Real=0.08, mmax::Real=Inf)
 
@@ -313,13 +283,13 @@ Function to instantiate the [Chabrier 2003](https://ui.adsabs.harvard.edu/abs/20
 """
 function Chabrier2003System(mmin::T=0.08, mmax::T=Inf) where T <: Real
     @assert mmin > 0
-    mmin > one(T) && return PowerLaw(2.3,mmin,mmax) # if mmin>1, we are ONLY using the power law extension, so return power law IMF.
-    mmax < one(T) && return truncated(LogNormal(chabrier2003_system_μ,chabrier2003_system_σ);lower=mmin,upper=mmax) # if mmax<1, we are ONLY using the lognormal component, so return lognormal IMF.
-    idx1 = findfirst(>(mmin), chabrier2003_breakpoints)-1
-    idx2 = findfirst(>=(mmax), chabrier2003_breakpoints)
-    bp = convert(Vector{T}, chabrier2003_breakpoints[idx1:idx2])
-    bp[1] = mmin
-    bp[end] = mmax
-    LogNormalBPL(convert(T,chabrier2003_system_μ), convert(T,chabrier2003_system_σ), convert(Vector{T},chabrier2003_α[idx1:(idx2-2)]), bp)
+    @assert mmin < mmax
+    α = SVector{1,T}(2.3)
+    μ = log(T(22//100))
+    σ = T(57//100) * logten
+    mmin > one(T) && return PowerLaw(T(2.3), mmin, mmax) # if mmin>1, we are ONLY using the power law extension, so return power law IMF.
+    mmax < one(T) && return truncated(LogNormal(μ, σ); lower=mmin, upper=mmax) # if mmax<1, we are ONLY using the lognormal component, so return lognormal IMF.
+    breakpoints = SVector{3,T}(mmin, 1, mmax)
+    LogNormalBPL(μ, σ, α, breakpoints)
 end
-Chabrier2003System(mmin::Real, mmax::Real) = Chabrier2003System(promote(mmin,mmax)...)
+Chabrier2003System(mmin::Real, mmax::Real) = Chabrier2003System(promote(mmin, mmax)...)
