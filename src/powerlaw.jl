@@ -105,7 +105,9 @@ function BrokenPowerLaw(α::SVector{N1,T}, breakpoints::SVector{N2,T}) where {T 
         total_integral += pl_integral(A[i], α[i], breakpoints[i], breakpoints[i+1])
     end
     A ./= total_integral
-    integrals = cumsum(SVector{nbreaks, T}(pl_integral(A[i], α[i], breakpoints[i], breakpoints[i+1]) for i in 1:nbreaks))
+    integrals = cumsum(MVector{nbreaks, T}(pl_integral(A[i], α[i], breakpoints[i], breakpoints[i+1]) for i in 1:nbreaks))
+    integrals[end] = one(T) # this should be exactly 1, but just in case of numerical issues, set it to 1
+    integrals = SVector(integrals)
     return BrokenPowerLaw(SVector(A), α, breakpoints, integrals)
 end
 BrokenPowerLaw(α::Tuple, breakpoints::Tuple) = BrokenPowerLaw(SVector(α), SVector(breakpoints))

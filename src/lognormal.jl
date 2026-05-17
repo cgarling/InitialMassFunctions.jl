@@ -128,7 +128,9 @@ function LogNormalBPL(μ::T, σ::T, α::SVector{N1,T}, breakpoints::SVector{N2,T
     for i in 2:nbreaks
         integrals[i] = pl_integral(A[i], α[i-1], breakpoints[i], breakpoints[i+1])
     end
-    integrals = cumsum(SVector(integrals))
+    integrals = cumsum(integrals)
+    integrals[end] = one(T) # this should be exactly 1, but just in case of numerical issues, set it to 1
+    integrals = SVector(integrals)
     return LogNormalBPL(μ, σ, α, breakpoints, A, integrals)
 end
 LogNormalBPL(μ::Real, σ::Real, α::Tuple, breakpoints::Tuple) =
