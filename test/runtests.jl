@@ -121,6 +121,7 @@ end
         @test partype(d) == Float64
         @test convert(BrokenPowerLaw{Float32},d) isa BrokenPowerLaw{Float32}
         @test convert(BrokenPowerLaw{Float64},d) === d
+        @test_throws AssertionError BrokenPowerLaw([1.3,2.35], [0.08,100.0,1.0]) # test that breakpoints must be in sorted order
 
         @test pdf(d,1.0) isa Float64
         @test pdf(d,1.0f0) isa Float64
@@ -239,6 +240,7 @@ end
         @test partype(d) == Float64
         @test convert(LogNormalBPL{Float32},d) isa LogNormalBPL{Float32}
         @test convert(LogNormalBPL{Float64},d) === d
+        @test_throws AssertionError LogNormalBPL(-5.0,1.5,[2.35],[0.08,100.0,1.0]) # test that breakpoints must be in sorted order
 
         @test pdf(d,1.0) isa Float64
         @test pdf(d,1.0f0) isa Float64
