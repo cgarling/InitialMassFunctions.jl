@@ -50,7 +50,7 @@ that is defined piecewise with different normalizations `A` and power law slopes
 
 # Arguments
  - `α`; the power-law slopes of the different segments of the broken power law.
- - `breakpoints`; the masses at which the power law slopes change. If `length(α)=n`, then `length(breakpoints)=n+1`.
+ - `breakpoints`; the masses at which the power law slopes change. If `length(α)=n`, then `length(breakpoints)=n+1`. Must be in sorted order.
 
 # Examples
 `BrokenPowerLaw([1.35,2.35],[0.08,1.0,Inf])` will instantiate a broken power law defined from a minimum mass of `0.08` to a maximum mass of `Inf` with a single switch in `α` at `m=1.0`. From `0.08 ≤ m ≤ 1.0`, `α = 1.35` and from `1.0 ≤ m ≤ Inf`, `α = 2.35`.
@@ -89,6 +89,7 @@ end
 function BrokenPowerLaw(α::SVector{N1,T}, breakpoints::SVector{N2,T}) where {T <: Real, N1, N2}
     @assert length(breakpoints) == length(α) + 1
     @assert breakpoints[1] > 0
+    @assert issorted(breakpoints)
     nbreaks = length(α)
     A = MVector{nbreaks, T}(undef)
     A[1] = one(T)
@@ -168,13 +169,13 @@ end
 #### Evaluation
 function pdf(d::BrokenPowerLaw{S}, x::T) where {S, T <: Real}
     ((x < minimum(d)) || (x > maximum(d))) && (return zero(promote_type(S,T)))
-    idx = findfirst(>=(x), d.breakpoints)
+    idx = searchsortedfirst(d.breakpoints, x)
     idx != 1 && (idx-=1)
     return d.A[idx] * x^-d.α[idx]
 end
 function logpdf(d::BrokenPowerLaw{S}, x::T) where {S, T <: Real}
     if ((x >= minimum(d)) && (x <= maximum(d)))
-        idx = findfirst(>=(x), d.breakpoints)
+        idx = searchsortedfirst(d.breakpoints, x)
         idx != 1 && (idx-=1)
         return log(d.A[idx]) - d.α[idx] * log(x)
     else
@@ -190,7 +191,7 @@ function cdf(d::BrokenPowerLaw{S}, x::T) where {S, T <: Real}
         return one(U)
     end
     A, α, breakpoints, _ = params(d)
-    idx = findfirst(>=(x), breakpoints)
+    idx = searchsortedfirst(breakpoints, x)
     idx != 1 && (idx-=1)
     return sum(pl_integral(A[i], α[i], breakpoints[i], min(x, breakpoints[i+1])) for i in 1:idx)
 end
@@ -203,7 +204,7 @@ function quantile(d::BrokenPowerLaw{S}, x::T) where {S, T <: Real}
         return U(maximum(d))
     end
     A, α, breakpoints, integrals = params(d)
-    idx = findfirst(>=(x), integrals)  # find the first breakpoint where the cumulative integral   # up to each breakpoint 
+    idx = searchsortedfirst(integrals, x)  # find the first breakpoint where the cumulative integral   # up to each breakpoint 
     idx != 1 && (x-=integrals[idx-1]) # is greater than x. If this is not the first breakpoint, then subtract off the cumulative integral
     a = one(S) - α[idx]
     return (x * a / A[idx] + breakpoints[idx]^a)^inv(a)
@@ -215,7 +216,7 @@ function quantile!(result::AbstractArray, d::BrokenPowerLaw{S}, x::AbstractArray
         xi = x[i]
         xi <= zero(T) && (result[i] = minimum(d); continue)
         xi >= one(T) && (result[i] = maximum(d); continue)
-        idx = findfirst(>=(xi), integrals)  # find the first breakpoint where the cumulative integral   # up to each breakpoint 
+        idx = searchsortedfirst(integrals, xi)  # find the first breakpoint where the cumulative integral   # up to each breakpoint 
         idx != 1 && (xi-=integrals[idx-1]) # is greater than x. If this is not the first breakpoint, then subtract off 
         a = one(S) - α[idx]                # the cumulative integral
         result[i] = (xi * a / A[idx] + breakpoints[idx]^a)^inv(a)
@@ -229,7 +230,7 @@ cquantile(d::BrokenPowerLaw, x::Real) = quantile(d, one(x) - x)
 function rand(rng::AbstractRNG, s::BrokenPowerLaw{T}) where T
     x = rand(rng, T)
     A, α, breakpoints, integrals = params(s)
-    idx = findfirst(>=(x), integrals)  # find the first breakpoint where the cumulative integral   # up to each breakpoint 
+    idx = searchsortedfirst(integrals, x)  # find the first breakpoint where the cumulative integral   # up to each breakpoint 
     idx != 1 && (x-=integrals[idx-1]) # is greater than x. If this is not the first breakpoint, then subtract off the cumulative integral
     a = one(T) - α[idx]
     return (x * a / A[idx] + breakpoints[idx]^a)^inv(a)
