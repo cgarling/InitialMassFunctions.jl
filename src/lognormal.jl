@@ -13,7 +13,10 @@ truncated such that the probability distribution is 0 below `mmin` and above `mm
  - `μ`; see [Distributions.LogNormal](https://juliastats.org/Distributions.jl/stable/univariate/#Distributions.LogNormal)
  - `σ`; see [Distributions.LogNormal](https://juliastats.org/Distributions.jl/stable/univariate/#Distributions.LogNormal)
 """
-LogNormalIMF(μ::Real, σ::Real, mmin::Real, mmax::Real) = truncated(LogNormal(μ, σ); lower=mmin, upper=mmax)
+function LogNormalIMF(μ::Real, σ::Real, mmin::Real, mmax::Real)
+    return truncated(LogNormal(μ, σ); lower=mmin, upper=mmax)
+end
+
 function mean(d::Truncated{LogNormal{T}, Continuous, T}) where T
     mmin::T, mmax::T = extrema(d)
     μ, σ = params(d.untruncated)
@@ -37,7 +40,10 @@ Definite integral of the lognormal probability distribution from `b1` to `b2`.
 \\int_{b1}^{b2} \\, \\frac{A}{x} \\, \\exp \\left[ \\frac{ -\\left( \\log(x) - \\mu \\right)^2}{2\\sigma^2} \\right] \\, dx
 ```
 """
-lognormal_integral(A, μ, σ, b1, b2) = A * sqrthalfπ * σ * (erf((μ - log(b1)) / (sqrt2*σ)) - erf((μ - log(b2)) / (sqrt2*σ)))
+function lognormal_integral(A, μ, σ, b1, b2)
+    σsqrt2 = sqrt2 * σ
+    return A * sqrthalfπ * σ * (erf((μ - log(b1)) / σsqrt2) - erf((μ - log(b2)) / σsqrt2))
+end
 
 """
     LogNormalBPL(μ::Real, σ::Real, α::AbstractVector{<:Real}, breakpoints::AbstractVector{<:Real})
@@ -93,6 +99,7 @@ end
 function LogNormalBPL(μ::T, σ::T, α::SVector{N1,T}, breakpoints::SVector{N2,T}) where {T <: Real, N1, N2}
     @assert length(breakpoints) == length(α) + 2
     @assert breakpoints[1] > 0
+    @assert issorted(breakpoints)
     nbreaks = length(α) + 1
     A = MVector{nbreaks, T}(undef)
     A[1] = one(T)
@@ -135,13 +142,19 @@ end
 
 #### Conversions
 Base.convert(::Type{LogNormalBPL{T}}, d::LogNormalBPL{S, N1, N2, N3}) where {T, S, N1, N2, N3} =
-    LogNormalBPL{T, N1, N2, N3}(convert(T, d.μ), convert(T, d.σ), convert(SVector{N1,T}, d.α), convert(SVector{N2,T}, d.breakpoints), convert(SVector{N3,T}, d.A), convert(SVector{N3,T}, d.integrals))
+    LogNormalBPL{T, N1, N2, N3}(convert(T, d.μ), 
+                                convert(T, d.σ), 
+                                convert(SVector{N1,T}, d.α), 
+                                convert(SVector{N2,T}, d.breakpoints), 
+                                convert(SVector{N3,T}, d.A), 
+                                convert(SVector{N3,T}, 
+                                d.integrals))
 Base.convert(::Type{LogNormalBPL{T}}, d::LogNormalBPL{T}) where T = d
 
 #### Parameters
 params(d::LogNormalBPL) = d.μ, d.σ, d.A, d.α, d.breakpoints, d.integrals
-minimum(d::LogNormalBPL) = minimum(d.breakpoints)
-maximum(d::LogNormalBPL) = maximum(d.breakpoints)
+minimum(d::LogNormalBPL) = first(d.breakpoints)
+maximum(d::LogNormalBPL) = last(d.breakpoints)
 partype(d::LogNormalBPL{T}) where T = T
 eltype(d::LogNormalBPL{T}) where T = T
 
@@ -161,15 +174,25 @@ median(d::LogNormalBPL{T}) where T = quantile(d, T(1//2)) # this is temporary
 #### Evaluation
 function pdf(d::LogNormalBPL, x::Real)
     ((x < minimum(d)) || (x > maximum(d))) && (return zero(partype(d)))
-    μ, σ, A, α, breakpoints, _ = params(d)
-    idx = findfirst(>=(x), breakpoints)
-    @inbounds ((idx==1) || (idx==2)) ? (return A[1] / x * exp(-(log(x)-μ)^2/(2*σ^2))) : (return A[idx-1] * x^-α[idx-2])
+    idx = searchsortedfirst(d.breakpoints, x)
+    @inbounds begin
+        if idx <= 2
+            return d.A[1] / x * exp(-(log(x)-d.μ)^2/(2*d.σ^2))
+        else
+            return d.A[idx-1] * x^-d.α[idx-2]
+        end
+    end
 end
 function logpdf(d::LogNormalBPL, x::Real)
     if ((x >= minimum(d)) && (x <= maximum(d)))
-        μ, σ, A, α, breakpoints, _ = params(d)
-        idx = findfirst(>=(x), breakpoints)
-        @inbounds ((idx==1) || (idx==2)) ? (return log(A[1]) - log(x) - (log(x)-μ)^2/(2*σ^2)) : (return log(A[idx-1]) - α[idx-2]*log(x))
+        idx = searchsortedfirst(d.breakpoints, x)
+        @inbounds begin
+            if idx <= 2
+                return log(d.A[1]) - log(x) - (log(x) - d.μ)^2 / (2*d.σ^2)
+            else
+                return log(d.A[idx-1]) - d.α[idx-2] * log(x)
+            end
+        end
     else
         T = partype(d)
         return -T(Inf)
@@ -182,7 +205,7 @@ function cdf(d::LogNormalBPL, x::Real)
         return one(partype(d))
     end
     μ, σ, A, α, breakpoints, _ = params(d)
-    idx = findfirst(>=(x), breakpoints)
+    idx = searchsortedfirst(breakpoints, x)
     @inbounds result = lognormal_integral(A[1], μ, σ, breakpoints[1], min(x, breakpoints[2]))
     @inbounds idx > 2 && (result += sum(pl_integral(A[i], α[i-1], breakpoints[i], min(x, breakpoints[i+1])) for i in 2:idx-1))
     return result
@@ -194,7 +217,7 @@ function quantile(d::LogNormalBPL{S}, x::T) where {S, T <: Real}
     x >= one(T) && (return U(maximum(d)))
     μ, σ, A, α, breakpoints, integrals = params(d)
     nbreaks = length(A)
-    idx = searchsortedfirst(integrals, x)  # find the first breakpoint where the cumulative integral
+    idx = searchsortedfirst(integrals, x)
     @inbounds begin
         if idx == 1
             # return exp(μ - sqrt(2) * σ * erfinv( (A[1] * π * σ * erf((μ-log(breakpoints[1]))/(sqrt(2)*σ)) - sqrt(2π)*x) / (A[1]*π*σ) ))
