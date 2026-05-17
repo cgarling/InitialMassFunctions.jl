@@ -122,6 +122,7 @@ end
         @test convert(BrokenPowerLaw{Float32},d) isa BrokenPowerLaw{Float32}
         @test convert(BrokenPowerLaw{Float64},d) === d
         @test_throws AssertionError BrokenPowerLaw([1.3,2.35], [0.08,100.0,1.0]) # test that breakpoints must be in sorted order
+        @test d.integrals[end] == 1.0
 
         @test pdf(d,1.0) isa Float64
         @test pdf(d,1.0f0) isa Float64
@@ -167,6 +168,7 @@ end
         @test partype(d) == Float32
         @test convert(BrokenPowerLaw{Float32},d) === d
         @test convert(BrokenPowerLaw{Float64},d) isa BrokenPowerLaw{Float64}
+        @test d.integrals[end] == 1.0f0
 
         @test pdf(d,1.0) isa Float64
         @test pdf(d,1.0f0) isa Float32
@@ -241,6 +243,7 @@ end
         @test convert(LogNormalBPL{Float32},d) isa LogNormalBPL{Float32}
         @test convert(LogNormalBPL{Float64},d) === d
         @test_throws AssertionError LogNormalBPL(-5.0,1.5,[2.35],[0.08,100.0,1.0]) # test that breakpoints must be in sorted order
+        @test d.integrals[end] == 1.0
 
         @test pdf(d,1.0) isa Float64
         @test pdf(d,1.0f0) isa Float64
@@ -252,6 +255,8 @@ end
         @test ccdf(d,1.0f0) isa Float64
         @test quantile(d,0.5) isa Float64
         @test quantile(d,0.5f0) isa Float64
+        @test quantile(d,1.0) == maximum(d)
+        @test quantile(d,0.0) == minimum(d)
         @test cquantile(d,0.5) isa Float64
         @test cquantile(d,0.5f0) isa Float64
         @test quantile(d,[0.5f0,0.75f0]) isa Vector{Float64}
@@ -265,6 +270,8 @@ end
         @test partype(d) == Float32
         @test convert(LogNormalBPL{Float32},d) === d
         @test convert(LogNormalBPL{Float64},d) isa LogNormalBPL{Float64}
+        @test d.integrals[end] == 1.0f0
+
 
         @test pdf(d,1.0) isa Float64
         @test pdf(d,1.0f0) isa Float32
@@ -276,6 +283,8 @@ end
         @test ccdf(d,1.0f0) isa Float32
         @test quantile(d,0.5) isa Float64
         @test quantile(d,0.5f0) isa Float32
+        @test quantile(d,1.0f0) == maximum(d)
+        @test quantile(d,0.0f0) == minimum(d)
         @test quantile(d,[0.5f0,0.75f0]) isa Vector{Float32}
         @test quantile(d,[0.5,0.75]) isa Vector{Float64}
         @test rand(d) isa Float32
