@@ -76,8 +76,9 @@ for T in (Float64, Float32)
     SUITE["LogNormalBPL $T"] = bench_log_normal_bpl(T)
 end
 
-# Run if not on CI
-if get(ENV, "CI", "false") == "false"
+# Only when run directly as a script (not when `include`d by AirspeedVelocity,
+# which defines and runs `SUITE` itself) do we run the suite and show a table.
+if abspath(PROGRAM_FILE) == @__FILE__
      results = run(SUITE, verbose=true)
 
     for (name, group) in results
