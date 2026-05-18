@@ -55,7 +55,7 @@ function bench_log_normal_bpl(T; samples::Int=1000)
     d = LogNormalBPL(T(-5.0), T(1.5), T[2.35], T[0.08, 1.0, 100.0])
     d_s = LogNormalBPL(T(-5.0), T(1.5), SVector{1,T}(2.35), SVector{3,T}(0.08, 1.0, 100.0))
     for (name, dist) in (("", d), (" svec", d_s))
-        group["rand"*name] = @benchmarkable rand($dist) # samples=samples
+        group["rand"*name] = @benchmarkable rand($dist) samples=samples
         group["pdf"*name] = @benchmarkable pdf($dist, $(T(0.5))) samples=samples
         group["logpdf"*name] = @benchmarkable logpdf($dist, $(T(0.5))) samples=samples
         group["cdf"*name] = @benchmarkable cdf($dist, $(T(0.5))) samples=samples
