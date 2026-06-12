@@ -97,9 +97,9 @@ struct LogNormalBPL{T,N1,N2,N3} <: AbstractIMF
 end
 
 function LogNormalBPL(μ::T, σ::T, α::SVector{N1,T}, breakpoints::SVector{N2,T}) where {T <: Real, N1, N2}
-    @assert length(breakpoints) == length(α) + 2
-    @assert breakpoints[1] > 0
-    @assert issorted(breakpoints)
+    @assert length(breakpoints) == length(α) + 2 "length(breakpoints) must equal length(α) + 2"
+    @assert breakpoints[1] > 0 "breakpoints[1] (the minimum mass) must be positive"
+    @assert issorted(breakpoints) "breakpoints must be in sorted order"
     nbreaks = length(α) + 1
     A = MVector{nbreaks, T}(undef)
     A[1] = one(T)
@@ -154,7 +154,7 @@ Base.convert(::Type{LogNormalBPL{T}}, d::LogNormalBPL{S, N1, N2, N3}) where {T, 
 Base.convert(::Type{LogNormalBPL{T}}, d::LogNormalBPL{T}) where T = d
 
 #### Parameters
-params(d::LogNormalBPL) = d.μ, d.σ, d.A, d.α, d.breakpoints, d.integrals
+params(d::LogNormalBPL) = d.μ, d.σ, d.α, d.breakpoints, d.A, d.integrals
 minimum(d::LogNormalBPL) = first(d.breakpoints)
 maximum(d::LogNormalBPL) = last(d.breakpoints)
 partype(d::LogNormalBPL{T}) where T = T
@@ -162,7 +162,7 @@ eltype(d::LogNormalBPL{T}) where T = T
 
 #### Statistics
 function mean(d::LogNormalBPL{T}) where T
-    μ, σ, A, α, breakpoints, _ = params(d)
+    μ, σ, α, breakpoints, A, _ = params(d)
     m = zero(T)
     m += A[1] * exp(μ + σ^2/2) * sqrthalfπ * σ * (erf( (μ + σ^2 - log(breakpoints[1])) / (sqrt2 * σ) ) -
         erf( (μ + σ^2 - log(breakpoints[2])) / (sqrt2 * σ) ) )
@@ -176,7 +176,7 @@ median(d::LogNormalBPL{T}) where T = quantile(d, T(1//2)) # this is temporary
 #### Evaluation
 function pdf(d::LogNormalBPL, x::Real)
     ((x < minimum(d)) || (x > maximum(d))) && (return zero(partype(d)))
-    idx = searchsortedfirst(d.breakpoints, x)
+    idx = findfirst(>=(x), d.breakpoints)
     @inbounds begin
         if idx <= 2
             return d.A[1] / x * exp(-(log(x)-d.μ)^2/(2*d.σ^2))
@@ -187,7 +187,7 @@ function pdf(d::LogNormalBPL, x::Real)
 end
 function logpdf(d::LogNormalBPL, x::Real)
     if ((x >= minimum(d)) && (x <= maximum(d)))
-        idx = searchsortedfirst(d.breakpoints, x)
+        idx = findfirst(>=(x), d.breakpoints)
         @inbounds begin
             if idx <= 2
                 return log(d.A[1]) - log(x) - (log(x) - d.μ)^2 / (2*d.σ^2)
@@ -206,10 +206,13 @@ function cdf(d::LogNormalBPL, x::Real)
     elseif x >= maximum(d)
         return one(partype(d))
     end
-    μ, σ, A, α, breakpoints, _ = params(d)
-    idx = searchsortedfirst(breakpoints, x)
-    @inbounds result = lognormal_integral(A[1], μ, σ, breakpoints[1], min(x, breakpoints[2]))
-    @inbounds idx > 2 && (result += sum(pl_integral(A[i], α[i-1], breakpoints[i], min(x, breakpoints[i+1])) for i in 2:idx-1))
+    μ, σ, α, breakpoints, A, integrals = params(d)
+    idx = findfirst(>=(x), breakpoints)
+    if idx <= 2
+        @inbounds result = lognormal_integral(A[1], μ, σ, breakpoints[1], x)
+    else
+        @inbounds result = integrals[idx-2] + pl_integral(A[idx-1], α[idx-2], breakpoints[idx-1], x)
+    end
     return result
 end
 ccdf(d::LogNormalBPL, x::Real) = one(partype(d)) - cdf(d, x)
@@ -217,9 +220,9 @@ function quantile(d::LogNormalBPL{S}, x::T) where {S, T <: Real}
     U = promote_type(S, T)
     x <= zero(T) && (return U(minimum(d)))
     x >= one(T) && (return U(maximum(d)))
-    μ, σ, A, α, breakpoints, integrals = params(d)
+    μ, σ, α, breakpoints, A, integrals = params(d)
     nbreaks = length(A)
-    idx = searchsortedfirst(integrals, x)
+    idx = findfirst(>=(x), integrals)
     @inbounds begin
         if idx == 1
             # return exp(μ - sqrt(2) * σ * erfinv( (A[1] * π * σ * erf((μ-log(breakpoints[1]))/(sqrt(2)*σ)) - sqrt(2π)*x) / (A[1]*π*σ) ))
@@ -235,13 +238,13 @@ function quantile(d::LogNormalBPL{S}, x::T) where {S, T <: Real}
 end
 function quantile!(result::AbstractArray{U}, d::LogNormalBPL{S}, x::AbstractArray{T}) where {S, T <: Real, U <: Real}
     @assert axes(result) == axes(x)
-    μ, σ, A, α, breakpoints, integrals = params(d)
+    μ, σ, α, breakpoints, A, integrals = params(d)
     nbreaks = length(A)
     @inbounds for i in eachindex(x)
         xi = x[i]
         xi <= zero(T) && (result[i]=minimum(d); continue)
         xi >= one(T) && (result[i]=maximum(d); continue)
-        idx = searchsortedfirst(integrals, xi)
+        idx = findfirst(>=(xi), integrals)
         if idx == 1
             result[i] = exp(μ - sqrt2 * σ * erfinv( (A[1] * π * σ * erf((μ-log(breakpoints[1]))/(sqrt2*σ)) - sqrt2π*xi) / (A[1]*π*σ) ))
         elseif idx <= nbreaks
@@ -261,7 +264,7 @@ cquantile(d::LogNormalBPL, x::Real) = quantile(d, 1-x)
 function rand(rng::AbstractRNG, s::LogNormalBPL{T}) where T
     x = rand(rng, T)
     μ, σ, A, α, breakpoints, integrals = s.μ, s.σ, s.A, s.α, s.breakpoints, s.integrals
-    idx = searchsortedfirst(integrals, x)
+    idx = findfirst(>=(x), integrals)
     @inbounds begin
         if idx == 1
             # return exp(μ - sqrt2 * σ * erfinv( (A[1] * π * σ * erf((μ-log(breakpoints[1]))/(sqrt2*σ)) - sqrt2π*x) / (A[1]*π*σ) ))
@@ -292,7 +295,7 @@ function Chabrier2003(mmin::T=0.08, mmax::T=Inf) where T <: Real
     α = SVector{1,T}(2.3)
     μ = log(T(79//1000)) #*log(10)
     σ = T(69//100) * logten
-    mmin > one(T) && return PowerLaw(T(2.3), mmin, mmax) # if mmin>1, we are ONLY using the power law extension, so return power law IMF.
+    mmin > one(T) && return PowerLawIMF(T(2.3), mmin, mmax) # if mmin>1, we are ONLY using the power law extension, so return power law IMF.
     mmax < one(T) && return truncated(LogNormal(μ, σ); lower=mmin, upper=mmax) # if mmax<1, we are ONLY using the lognormal component, so return lognormal IMF.
     breakpoints = SVector{3,T}(mmin, 1, mmax)
     LogNormalBPL(μ, σ, α, breakpoints)
@@ -312,7 +315,7 @@ function Chabrier2003System(mmin::T=0.08, mmax::T=Inf) where T <: Real
     α = SVector{1,T}(2.3)
     μ = log(T(22//100))
     σ = T(57//100) * logten
-    mmin > one(T) && return PowerLaw(T(2.3), mmin, mmax) # if mmin>1, we are ONLY using the power law extension, so return power law IMF.
+    mmin > one(T) && return PowerLawIMF(T(2.3), mmin, mmax) # if mmin>1, we are ONLY using the power law extension, so return power law IMF.
     mmax < one(T) && return truncated(LogNormal(μ, σ); lower=mmin, upper=mmax) # if mmax<1, we are ONLY using the lognormal component, so return lognormal IMF.
     breakpoints = SVector{3,T}(mmin, 1, mmax)
     LogNormalBPL(μ, σ, α, breakpoints)

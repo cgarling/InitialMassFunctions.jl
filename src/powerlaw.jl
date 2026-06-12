@@ -87,9 +87,9 @@ struct BrokenPowerLaw{T, N1, N2} <: AbstractIMF
     integrals::SVector{N1, T}   # cumulative integral up to each breakpoint
 end
 function BrokenPowerLaw(α::SVector{N1,T}, breakpoints::SVector{N2,T}) where {T <: Real, N1, N2}
-    @assert length(breakpoints) == length(α) + 1
-    @assert breakpoints[1] > 0
-    @assert issorted(breakpoints)
+    @assert length(breakpoints) == length(α) + 1 "length(breakpoints) must equal length(α) + 1"
+    @assert breakpoints[1] > 0 "breakpoints[1] (the minimum mass) must be positive"
+    @assert issorted(breakpoints) "breakpoints must be in sorted order"
     nbreaks = length(α)
     A = MVector{nbreaks, T}(undef)
     A[1] = one(T)
@@ -125,8 +125,8 @@ Base.convert(::Type{BrokenPowerLaw{T}}, d::BrokenPowerLaw{T}) where T <: Real = 
 
 #### Parameters
 params(d::BrokenPowerLaw) = d.A, d.α, d.breakpoints, d.integrals
-minimum(d::BrokenPowerLaw) = minimum(d.breakpoints)
-maximum(d::BrokenPowerLaw) = maximum(d.breakpoints)
+minimum(d::BrokenPowerLaw) = first(d.breakpoints)
+maximum(d::BrokenPowerLaw) = last(d.breakpoints)
 partype(d::BrokenPowerLaw{T}) where T = T
 eltype(d::BrokenPowerLaw{T}) where T = T
 
@@ -171,13 +171,13 @@ end
 #### Evaluation
 function pdf(d::BrokenPowerLaw{S}, x::T) where {S, T <: Real}
     ((x < minimum(d)) || (x > maximum(d))) && (return zero(promote_type(S,T)))
-    idx = searchsortedfirst(d.breakpoints, x)
+    idx = findfirst(>=(x), d.breakpoints)
     idx != 1 && (idx-=1)
     return d.A[idx] * x^-d.α[idx]
 end
 function logpdf(d::BrokenPowerLaw{S}, x::T) where {S, T <: Real}
     if ((x >= minimum(d)) && (x <= maximum(d)))
-        idx = searchsortedfirst(d.breakpoints, x)
+        idx = findfirst(>=(x), d.breakpoints)
         idx != 1 && (idx-=1)
         return log(d.A[idx]) - d.α[idx] * log(x)
     else
@@ -192,10 +192,14 @@ function cdf(d::BrokenPowerLaw{S}, x::T) where {S, T <: Real}
     elseif x >= maximum(d)
         return one(U)
     end
-    A, α, breakpoints, _ = params(d)
-    idx = searchsortedfirst(breakpoints, x)
+    A, α, breakpoints, integrals = params(d)
+    idx = findfirst(>=(x), breakpoints)
     idx != 1 && (idx-=1)
-    return sum(pl_integral(A[i], α[i], breakpoints[i], min(x, breakpoints[i+1])) for i in 1:idx)
+    if idx == 1
+        return pl_integral(A[1], α[1], breakpoints[1], x)
+    else
+        return integrals[idx-1] + pl_integral(A[idx], α[idx], breakpoints[idx], x)
+    end
 end
 ccdf(d::BrokenPowerLaw, x::Real) = one(partype(d)) - cdf(d, x)
 function quantile(d::BrokenPowerLaw{S}, x::T) where {S, T <: Real}
@@ -206,8 +210,8 @@ function quantile(d::BrokenPowerLaw{S}, x::T) where {S, T <: Real}
         return U(maximum(d))
     end
     A, α, breakpoints, integrals = params(d)
-    idx = searchsortedfirst(integrals, x)  # find the first breakpoint where the cumulative integral   # up to each breakpoint 
-    idx != 1 && (x-=integrals[idx-1]) # is greater than x. If this is not the first breakpoint, then subtract off the cumulative integral
+    idx = findfirst(>=(x), integrals)  # find the first breakpoint where the cumulative integral
+    idx != 1 && (x-=integrals[idx-1]) # is greater than x. If this is not the first breakpoint, subtract off the cumulative integral
     a = one(S) - α[idx]
     return (x * a / A[idx] + breakpoints[idx]^a)^inv(a)
 end
@@ -218,8 +222,8 @@ function quantile!(result::AbstractArray, d::BrokenPowerLaw{S}, x::AbstractArray
         xi = x[i]
         xi <= zero(T) && (result[i] = minimum(d); continue)
         xi >= one(T) && (result[i] = maximum(d); continue)
-        idx = searchsortedfirst(integrals, xi)  # find the first breakpoint where the cumulative integral   # up to each breakpoint 
-        idx != 1 && (xi-=integrals[idx-1]) # is greater than x. If this is not the first breakpoint, then subtract off 
+        idx = findfirst(>=(xi), integrals)  # find the first breakpoint where the cumulative integral
+        idx != 1 && (xi-=integrals[idx-1]) # is greater than x. If this is not the first breakpoint, subtract off
         a = one(S) - α[idx]                # the cumulative integral
         result[i] = (xi * a / A[idx] + breakpoints[idx]^a)^inv(a)
     end
@@ -232,8 +236,8 @@ cquantile(d::BrokenPowerLaw, x::Real) = quantile(d, one(x) - x)
 function rand(rng::AbstractRNG, s::BrokenPowerLaw{T}) where T
     x = rand(rng, T)
     A, α, breakpoints, integrals = params(s)
-    idx = searchsortedfirst(integrals, x)  # find the first breakpoint where the cumulative integral   # up to each breakpoint 
-    idx != 1 && (x-=integrals[idx-1]) # is greater than x. If this is not the first breakpoint, then subtract off the cumulative integral
+    idx = findfirst(>=(x), integrals)  # find the first breakpoint where the cumulative integral
+    idx != 1 && (x-=integrals[idx-1]) # is greater than x. If this is not the first breakpoint, subtract off the cumulative integral
     a = one(T) - α[idx]
     return (x * a / A[idx] + breakpoints[idx]^a)^inv(a)
 end

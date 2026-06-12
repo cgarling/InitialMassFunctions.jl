@@ -154,6 +154,8 @@ end
         @test quantile(d,1.2f0) === maximum(d)         # Test out of range inputs
         @test quantile(d,-1.0) === Float64(minimum(d)) # Test out of range inputs
         @test quantile(d,-1.0f0) === minimum(d)        # Test out of range inputs
+        @test quantile(d,0.0) == minimum(d)           # Test exact probability boundary
+        @test quantile(d,1.0) == maximum(d)           # Test exact probability boundary
         @test quantile(d,[0.5f0,0.75f0]) isa Vector{Float64}
         @test quantile(d,[0.5,0.75]) isa Vector{Float64}
         @test cquantile(d,0.5) isa Float64
