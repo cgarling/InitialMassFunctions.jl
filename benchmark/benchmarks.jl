@@ -78,7 +78,7 @@ end
 
 # If not on CI, we'll show a nice table
 if get(ENV, "CI", "false") == "false"
-     results = run(SUITE, verbose=true)
+    results = run(SUITE, verbose=true)
 
     for (name, group) in results
         println("\n=== $name ===")
