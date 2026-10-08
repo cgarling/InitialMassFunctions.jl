@@ -226,11 +226,12 @@ function quantile(d::LogNormalBPL{S}, x::T) where {S, T <: Real}
     @inbounds begin
         if idx == 1
             # return exp(μ - sqrt(2) * σ * erfinv( (A[1] * π * σ * erf((μ-log(breakpoints[1]))/(sqrt(2)*σ)) - sqrt(2π)*x) / (A[1]*π*σ) ))
-            return exp(μ - sqrt2 * σ * erfinv( (A[1] * π * σ * erf((μ-log(breakpoints[1]))/(sqrt2*σ)) - sqrt2π*x) / (A[1]*π*σ) ))
+            # Rounding can place the inverted value just outside the support
+            return clamp(exp(μ - sqrt2 * σ * erfinv( (A[1] * π * σ * erf((μ-log(breakpoints[1]))/(sqrt2*σ)) - sqrt2π*x) / (A[1]*π*σ) )), first(breakpoints), last(breakpoints))
         elseif idx <= nbreaks
             x -= integrals[idx-1]   # If this is not the first breakpoint, then subtract off the cumulative integral and solve 
             a = one(S) - α[idx-1] # using power law CDF inversion
-            return (x * a / A[idx] + breakpoints[idx]^a)^inv(a)
+            return clamp((x * a / A[idx] + breakpoints[idx]^a)^inv(a), first(breakpoints), last(breakpoints))
         else
             error("Quantile calculation failed; index out of bounds. Check normalization of `integrals`.")
         end
@@ -246,11 +247,11 @@ function quantile!(result::AbstractArray{U}, d::LogNormalBPL{S}, x::AbstractArra
         xi >= one(T) && (result[i]=maximum(d); continue)
         idx = findfirst(>=(xi), integrals)
         if idx == 1
-            result[i] = exp(μ - sqrt2 * σ * erfinv( (A[1] * π * σ * erf((μ-log(breakpoints[1]))/(sqrt2*σ)) - sqrt2π*xi) / (A[1]*π*σ) ))
+            result[i] = clamp(exp(μ - sqrt2 * σ * erfinv( (A[1] * π * σ * erf((μ-log(breakpoints[1]))/(sqrt2*σ)) - sqrt2π*xi) / (A[1]*π*σ) )), first(breakpoints), last(breakpoints))
         elseif idx <= nbreaks
             xi -= integrals[idx-1]   # If this is not the first breakpoint, then subtract off the cumulative integral and solve 
             a = one(S) - α[idx-1] # using power law CDF inversion
-            result[i] = (xi * a / A[idx] + breakpoints[idx]^a)^inv(a)
+            result[i] = clamp((xi * a / A[idx] + breakpoints[idx]^a)^inv(a), first(breakpoints), last(breakpoints))
         else
             error("Quantile calculation failed; index out of bounds. Check normalization of `integrals`.")
         end
@@ -269,11 +270,11 @@ function rand(rng::AbstractRNG, s::LogNormalBPL{T}) where T
         if idx == 1
             # return exp(μ - sqrt2 * σ * erfinv( (A[1] * π * σ * erf((μ-log(breakpoints[1]))/(sqrt2*σ)) - sqrt2π*x) / (A[1]*π*σ) ))
             E = erf((μ - log(breakpoints[1])) / (sqrt2 * σ))
-            return exp(μ - sqrt2 * σ * erfinv(E - sqrt2π * x / (A[1] * π * σ)))
+            return clamp(exp(μ - sqrt2 * σ * erfinv(E - sqrt2π * x / (A[1] * π * σ))), first(breakpoints), last(breakpoints))
         elseif idx <= length(A)
             x -= integrals[idx-1]   # If this is not the first breakpoint, then subtract off the cumulative integral and solve 
             a = one(T) - α[idx-1]   # using power law CDF inversion
-            return (x * a / A[idx] + breakpoints[idx]^a)^inv(a)
+            return clamp((x * a / A[idx] + breakpoints[idx]^a)^inv(a), first(breakpoints), last(breakpoints))
         else
             error("Random sampling failed; index out of bounds. Check normalization of `integrals`.")
         end

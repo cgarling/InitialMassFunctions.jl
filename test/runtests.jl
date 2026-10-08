@@ -247,6 +247,10 @@ end
     @testset "Kroupa2001" begin
         d = Kroupa2001(0.08,100.0)
         test_imf(d)
+        # Quantiles at the extremes of the probability range stay within the support despite rounding
+        p = [nextfloat(0.0), prevfloat(1.0)]
+        @test all(q -> minimum(d) <= q <= maximum(d), quantile(d, p))
+        @test all(q -> minimum(d) <= q <= maximum(d), quantile.(d, p))
     end
 end
 
@@ -325,10 +329,18 @@ end
         @test convert(LogNormalBPL{Float32}, d) isa LogNormalBPL{Float32}
         @test convert(LogNormalBPL{Float64}, d) isa LogNormalBPL{Float64}
         test_imf_lognormal(d)
+        p = [nextfloat(0.0), prevfloat(1.0)]
+        @test all(q -> minimum(d) <= q <= maximum(d), quantile(d, p))
+        @test all(q -> minimum(d) <= q <= maximum(d), quantile.(d, p))
     end
     @testset "Chabrier2003System" begin
         d = Chabrier2003System(0.08, 100.0)
         test_imf_lognormal(d)
+    end
+    # Above 1 solar mass only the power-law extension remains
+    @testset "Chabrier2003 power law" begin
+        @test Chabrier2003(1.5, 100.0) == PowerLawIMF(2.3, 1.5, 100.0)
+        @test Chabrier2003System(1.5, 100.0) == PowerLawIMF(2.3, 1.5, 100.0)
     end
 end
 

@@ -216,7 +216,8 @@ function quantile(d::BrokenPowerLaw{S}, x::T) where {S, T <: Real}
     idx = findfirst(>=(x), integrals)  # find the first breakpoint where the cumulative integral
     idx != 1 && (x-=integrals[idx-1]) # is greater than x. If this is not the first breakpoint, subtract off the cumulative integral
     a = one(S) - α[idx]
-    return (x * a / A[idx] + breakpoints[idx]^a)^inv(a)
+    # Rounding can place the inverted value just outside the support
+    return clamp((x * a / A[idx] + breakpoints[idx]^a)^inv(a), first(breakpoints), last(breakpoints))
 end
 function quantile!(result::AbstractArray, d::BrokenPowerLaw{S}, x::AbstractArray{T}) where {S, T <: Real}
     @assert axes(result) == axes(x)
@@ -228,7 +229,7 @@ function quantile!(result::AbstractArray, d::BrokenPowerLaw{S}, x::AbstractArray
         idx = findfirst(>=(xi), integrals)  # find the first breakpoint where the cumulative integral
         idx != 1 && (xi-=integrals[idx-1]) # is greater than x. If this is not the first breakpoint, subtract off
         a = one(S) - α[idx]                # the cumulative integral
-        result[i] = (xi * a / A[idx] + breakpoints[idx]^a)^inv(a)
+        result[i] = clamp((xi * a / A[idx] + breakpoints[idx]^a)^inv(a), first(breakpoints), last(breakpoints))
     end
     return result
 end
@@ -242,7 +243,7 @@ function rand(rng::AbstractRNG, s::BrokenPowerLaw{T}) where T
     idx = findfirst(>=(x), integrals)  # find the first breakpoint where the cumulative integral
     idx != 1 && (x-=integrals[idx-1]) # is greater than x. If this is not the first breakpoint, subtract off the cumulative integral
     a = one(T) - α[idx]
-    return (x * a / A[idx] + breakpoints[idx]^a)^inv(a)
+    return clamp((x * a / A[idx] + breakpoints[idx]^a)^inv(a), first(breakpoints), last(breakpoints))
 end
 
 #######################################################
