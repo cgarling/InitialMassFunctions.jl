@@ -8,7 +8,7 @@ using PrecompileTools: @setup_workload, @compile_workload
                 for f in (rand, mean, median)
                     f(I)
                 end
-                for f in (pdf, logpdf, cdf, ccdf, quantile, cquantile)
+                for f in (pdf, logpdf, cdf, ccdf, quantile, cquantile, partial_mean)
                     f(I, T(0.5))
                 end
             end

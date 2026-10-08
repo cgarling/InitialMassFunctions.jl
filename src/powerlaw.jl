@@ -10,11 +10,13 @@ Descibes a single power-law IMF with probability distribution
 truncated such that the probability distribution is 0 below `mmin` and above `mmax`. `A` is a normalization constant such that the distribution integrates to 1 from the minimum valid stellar mass `mmin` to the maximum valid stellar mass `mmax`. This is simply `Distributions.truncated(Distributions.Pareto(α-1,mmin);upper=mmax)`. See the documentation for [`Pareto`](https://juliastats.org/Distributions.jl/latest/univariate/#Distributions.Pareto) and [`truncated`](https://juliastats.org/Distributions.jl/latest/truncate/#Distributions.truncated).
 """
 PowerLawIMF(α::Real, mmin::Real, mmax::Real) = truncated(Pareto(α-1, mmin); upper=mmax)
-function mean(d::Truncated{Pareto{T}, Continuous, T}) where T
+function partial_mean(d::Truncated{Pareto{T}, Continuous, T}, x::Real) where T
     mmin::T, mmax::T = extrema(d)
     α, θ = params(d.untruncated)
-    return (α * θ^α / (1-α) / d.ucdf) * (mmax^(1-α) - mmin^(1-α))
+    return α * θ^α / (1 - α) / (d.ucdf - d.lcdf) * (clamp(x, mmin, mmax)^(1 - α) - mmin^(1 - α))
 end
+# maximum(d) can be Float64 for T == Float32, as maximum(d.untruncated) is Inf
+mean(d::Truncated{Pareto{T}, Continuous, T}) where T = partial_mean(d, T(maximum(d)))
 """
     Salpeter1955(mmin::Real=0.4, mmax::Real=Inf)
 The IMF model of [Salpeter 1955](https://ui.adsabs.harvard.edu/abs/1955ApJ...121..161S/abstract), a [`PowerLawIMF`](@ref) with `α=2.35`.
@@ -131,11 +133,12 @@ partype(d::BrokenPowerLaw{T}) where T = T
 eltype(d::BrokenPowerLaw{T}) where T = T
 
 #### Statistics
-function mean(d::BrokenPowerLaw)
+function partial_mean(d::BrokenPowerLaw, x::Real)
     A, α, breakpoints, _ = params(d)
-    return sum( (A[i] * breakpoints[i+1]^(2-α[i])/(2-α[i]) -
-        A[i] * breakpoints[i]^(2-α[i])/(2-α[i]) for i in 1:length(A) ) )
+    # Segments above x contribute zero and segments below x contribute their full integral
+    return sum(A[i] / (2 - α[i]) * (clamp(x, breakpoints[i], breakpoints[i+1])^(2 - α[i]) - breakpoints[i]^(2 - α[i])) for i in eachindex(A))
 end
+mean(d::BrokenPowerLaw) = partial_mean(d, maximum(d))
 median(d::BrokenPowerLaw{T}) where T = quantile(d, T(1//2)) # this is temporary
 # mode(d::BrokenPowerLaw) = d.breakpoints[argmin(d.α)] # this is not always correct
 

@@ -20,6 +20,9 @@ for T in (Float32, Float64)
                     test_imf_allocs(d, f)
                 end
             end
+            @testset "partial_mean" begin
+                test_imf_allocs(d, partial_mean, T(1//2))
+            end
             # for f in (pdf, logpdf, cdf, ccdf, quantile, cquantile)
             #     @testset "$(f)" begin
             #         test_imf_allocs(d, f, T(1//2))

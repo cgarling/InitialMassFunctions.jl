@@ -17,12 +17,14 @@ function LogNormalIMF(μ::Real, σ::Real, mmin::Real, mmax::Real)
     return truncated(LogNormal(μ, σ); lower=mmin, upper=mmax)
 end
 
-function mean(d::Truncated{LogNormal{T}, Continuous, T}) where T
+function partial_mean(d::Truncated{LogNormal{T}, Continuous, T}, x::Real) where T
     mmin::T, mmax::T = extrema(d)
     μ, σ = params(d.untruncated)
-    return -exp(μ + σ^2/2) / 2 / (d.ucdf - d.lcdf) *
-        ( erf( (μ + σ^2 - log(mmax)) / (sqrt2*σ) ) - erf( (μ + σ^2 - log(mmin)) / (sqrt2*σ) ) )
+    # Two-argument erf(a, b) = erf(b) - erf(a) avoids cancellation when both arguments are far in the same tail
+    return exp(μ + σ^2/2) / 2 / (d.ucdf - d.lcdf) * erf((μ + σ^2 - log(clamp(x, mmin, mmax))) / (sqrt2*σ), (μ + σ^2 - log(mmin)) / (sqrt2*σ))
 end
+# maximum(d) can be Float64 for T == Float32, as maximum(d.untruncated) is Inf
+mean(d::Truncated{LogNormal{T}, Continuous, T}) where T = partial_mean(d, T(maximum(d)))
 
 """
     Chabrier2001LogNormal(mmin::Real=0.08, mmax::Real=Inf)
@@ -161,15 +163,13 @@ partype(d::LogNormalBPL{T}) where T = T
 eltype(d::LogNormalBPL{T}) where T = T
 
 #### Statistics
-function mean(d::LogNormalBPL{T}) where T
+function partial_mean(d::LogNormalBPL, x::Real)
     μ, σ, α, breakpoints, A, _ = params(d)
-    m = zero(T)
-    m += A[1] * exp(μ + σ^2/2) * sqrthalfπ * σ * (erf( (μ + σ^2 - log(breakpoints[1])) / (sqrt2 * σ) ) -
-        erf( (μ + σ^2 - log(breakpoints[2])) / (sqrt2 * σ) ) )
-    m += sum(A[i] / (2 - α[i-1]) * (breakpoints[i+1]^(2-α[i-1]) -
-        breakpoints[i]^(2-α[i-1])) for i in 2:length(A))
-    return m
+    # Segments above x contribute zero and segments below x contribute their full integral
+    m = A[1] * exp(μ + σ^2/2) * sqrthalfπ * σ * erf((μ + σ^2 - log(clamp(x, breakpoints[1], breakpoints[2]))) / (sqrt2*σ), (μ + σ^2 - log(breakpoints[1])) / (sqrt2*σ))
+    return m + sum(A[i] / (2 - α[i-1]) * (clamp(x, breakpoints[i], breakpoints[i+1])^(2 - α[i-1]) - breakpoints[i]^(2 - α[i-1])) for i in 2:length(A))
 end
+mean(d::LogNormalBPL) = partial_mean(d, maximum(d))
 median(d::LogNormalBPL{T}) where T = quantile(d, T(1//2)) # this is temporary
 # mode(d::BrokenPowerLaw) = d.breakpoints[argmin(d.α)] # this is not always correct
 

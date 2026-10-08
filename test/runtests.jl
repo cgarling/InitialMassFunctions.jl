@@ -1,4 +1,5 @@
 using InitialMassFunctions
+using Distributions: Pareto, Uniform, truncated
 using QuadGK
 using Test
 
@@ -31,7 +32,10 @@ function test_imf(d)
         @test cquantile(d, x) ≈ quantile(d, 1-x) rtol=rtol
         @test logpdf(d, i) ≈ log(pdf(d, i)) rtol=rtol
         @test x ≈ 1 - ccdf(d, i) rtol=rtol
+        @test partial_mean(d, i) ≈ quadgk(m -> m * pdf(d, m), mmin, i)[1] rtol=rtol
     end
+    @test partial_mean(d, mmin / 2) ≈ 0 atol=rtol * mean(d)
+    @test partial_mean(d, 2 * mmax) ≈ mean(d) rtol=rtol
 end
 
 # Quantities like var and skewnewss not defined for truncated lognormal IMFs
@@ -65,7 +69,10 @@ function test_imf_lognormal(d)
         @test cquantile(d, x) ≈ quantile(d, 1-x) rtol=rtol
         @test logpdf(d, i) ≈ log(pdf(d, i)) rtol=rtol
         @test x ≈ 1 - ccdf(d, i) rtol=rtol
+        @test partial_mean(d, i) ≈ quadgk(m -> m * pdf(d, m), mmin, i)[1] rtol=rtol
     end
+    @test partial_mean(d, mmin / 2) ≈ 0 atol=rtol * mean(d)
+    @test partial_mean(d, 2 * mmax) ≈ mean(d) rtol=rtol
 end
 
 # function test_type(T::Type,d::BrokenPowerLaw)
@@ -89,7 +96,12 @@ end
         @test mean(d) isa T
         @test mean(d) ≈ quadgk(x -> x * pdf(d, x), extrema(d)...)[1] atol=1e-5
         @test median(d) isa T
+        @test partial_mean(d, T(0.6)) isa T
+        @test partial_mean(d, T(0.6)) ≈ quadgk(x -> x * pdf(d, x), minimum(d), T(0.6))[1] rtol=sqrt(eps(T))
     end
+    # Truncation above the minimum of the Pareto distribution
+    d = truncated(Pareto(1.35, 0.1); lower=0.5, upper=100.0)
+    @test mean(d) ≈ quadgk(x -> x * pdf(d, x), extrema(d)...)[1] rtol=sqrt(eps())
 end
 
 @testset "LogNormalIMF" begin
@@ -104,6 +116,8 @@ end
         @test mean(d) isa T
         @test mean(d) ≈ quadgk(x -> x * pdf(d, x), extrema(d)...)[1] atol=1e-5
         @test median(d) isa T
+        @test partial_mean(d, T(0.6)) isa T
+        @test partial_mean(d, T(0.6)) ≈ quadgk(x -> x * pdf(d, x), minimum(d), T(0.6))[1] rtol=sqrt(eps(T))
     end
     # test named types of LogNormalIMFs
     @testset "Chabrier2001LogNormal" begin
@@ -209,6 +223,7 @@ end
         @test rand(d) isa Float32
         @test mean(d) isa Float32
         @test median(d) isa Float32
+        @test partial_mean(d, 0.5f0) isa Float32
     end
     @testset "Params" begin
         d = BrokenPowerLaw([1.3,2.35],[0.08,1.0,100.0])
@@ -291,6 +306,7 @@ end
         @test quantile(d,[0.5,0.75]) isa Vector{Float64}
         @test rand(d) isa Float32
         @test mean(d) isa Float32
+        @test partial_mean(d, 0.5f0) isa Float32
     end
     @testset "Params" begin
         d = LogNormalBPL(-5.0,1.5,[2.35],[0.08,1.0,100.0])
@@ -314,6 +330,13 @@ end
         d = Chabrier2003System(0.08, 100.0)
         test_imf_lognormal(d)
     end
+end
+
+@testset "partial_mean fallback" begin
+    d = Uniform(0.0, 2.0)
+    @test partial_mean(d, 1.0) ≈ 1 / 4
+    @test partial_mean(d, -1.0) == 0
+    @test partial_mean(d, 3.0) ≈ mean(d)
 end
 
 @testset "Allocations" begin
