@@ -1,5 +1,5 @@
 using InitialMassFunctions
-using Distributions: Pareto, Uniform, truncated
+using Distributions: Pareto, Uniform, Normal, LogNormal, Exponential, Gamma, Beta, TriangularDist, truncated, ccdf, ContinuousUnivariateDistribution
 using QuadGK
 using Test
 
@@ -345,10 +345,42 @@ end
 end
 
 @testset "partial_mean fallback" begin
-    d = Uniform(0.0, 2.0)
-    @test partial_mean(d, 1.0) ≈ 1 / 4
+    d = TriangularDist(0.0, 2.0, 1.0)
+    @test partial_mean(d, 1.0) ≈ 1 / 3
     @test partial_mean(d, -1.0) == 0
     @test partial_mean(d, 3.0) ≈ mean(d)
+end
+
+@testset "partial_mean closed forms" begin
+    fallback = which(partial_mean, Tuple{ContinuousUnivariateDistribution, Float64})
+    ∫xpdf(d, a, b) = quadgk(m -> m * pdf(d, m), a, b; rtol=1e-12)[1]
+    for d in (Normal(0.3, 0.7), LogNormal(-0.2, 0.5), Exponential(0.6), Gamma(2.5, 0.4), Gamma(0.5, 1.3), Beta(0.7, 2.3),
+              Uniform(0.2, 1.4))
+        @test which(partial_mean, Tuple{typeof(d), Float64}) != fallback
+        lo = minimum(d)
+        for x in (0.1, 0.5, 1.0, 1.3)
+            @test partial_mean(d, x) ≈ ∫xpdf(d, lo, x) rtol=1e-10
+        end
+        isfinite(lo) && @test partial_mean(d, lo - 1) == 0
+        @test partial_mean(d, 1e3) ≈ mean(d)
+        # Truncated to an interval, and to one far in the upper tail
+        for (a, b) in ((0.25, 0.9), (quantile(d, 1 - 1e-9), quantile(d, 1 - 1e-12)))
+            t = truncated(d, a, b)
+            @test which(partial_mean, Tuple{typeof(t), Float64}) != fallback
+            x = (a + b) / 2
+            # Mean of the truncated distribution between a and x, normalized in the complementary tail
+            ref = ∫xpdf(d, a, x) / (ccdf(d, a) - ccdf(d, b))
+            @test partial_mean(t, x) ≈ ref rtol=1e-8
+            @test partial_mean(t, a / 2) == 0
+            @test partial_mean(t, 2b) ≈ partial_mean(t, b)
+            @test a < partial_mean(t, b) < b
+        end
+    end
+    for d in (Normal(0.3f0, 0.7f0), LogNormal(-0.2f0, 0.5f0), Exponential(0.6f0), Gamma(2.5f0, 0.4f0), Beta(0.7f0, 2.3f0),
+              Uniform(0.2f0, 1.4f0))
+        @test partial_mean(d, 0.5f0) isa Float32
+        @test partial_mean(truncated(d, 0.25f0, 0.9f0), 0.5f0) isa Float32
+    end
 end
 
 @testset "Allocations" begin
